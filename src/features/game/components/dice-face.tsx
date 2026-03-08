@@ -34,12 +34,20 @@ const sizeClass = {
   lg: "h-28 w-28 rounded-3xl",
 };
 
+function getToneClass(highlighted: boolean, boosted: boolean) {
+  if (highlighted) {
+    return "border-emerald-400/70 bg-emerald-200/95";
+  }
+
+  if (boosted) {
+    return "border-amber-300/90 bg-amber-100";
+  }
+
+  return "border-slate-300 bg-slate-100";
+}
+
 export function DiceFace({ value, size = "md", highlighted = false, boosted = false }: DiceFaceProps) {
-  const toneClass = highlighted
-    ? "border-emerald-400/70 bg-emerald-200/95"
-    : boosted
-      ? "border-amber-300/90 bg-amber-100"
-      : "border-slate-300 bg-slate-100";
+  const toneClass = getToneClass(highlighted, boosted);
 
   return (
     <div className={`relative border shadow-sm ${sizeClass[size]} ${toneClass}`} aria-label={`Dice ${value}`}>

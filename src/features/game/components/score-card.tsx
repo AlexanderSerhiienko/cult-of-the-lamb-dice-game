@@ -1,0 +1,21 @@
+import { SectionCard } from "@/components/ui/section-card";
+
+type ScoreCardProps = {
+  label: string;
+  value: number;
+  tone: "player" | "bot";
+};
+
+const valueToneClass = {
+  player: "text-emerald-300",
+  bot: "text-violet-300",
+};
+
+export function ScoreCard({ label, value, tone }: ScoreCardProps) {
+  return (
+    <SectionCard className="text-center">
+      <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className={`mt-3 text-6xl font-black ${valueToneClass[tone]}`}>{value}</p>
+    </SectionCard>
+  );
+}
