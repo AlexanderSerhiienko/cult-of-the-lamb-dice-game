@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { GameHeaderActions } from "@/components/layout/game-header-actions";
 import { Modal } from "@/components/ui/modal";
 import { ModalHeader } from "@/components/ui/modal-header";
+import { GAME_STATUS } from "@/features/game/core/types";
 import { MatchInfoContent } from "@/features/game/components/match-info-content";
 import { RulesModalContent } from "@/features/game/components/rules-modal-content";
 import { useGameStore } from "@/features/game/store/use-game-store";
@@ -36,7 +37,7 @@ export function AppShell({ children }: AppShellProps) {
               onResetGame={resetGame}
               onOpenRules={() => setIsRulesOpen(true)}
               onOpenMatchInfo={() => setIsMatchInfoOpen(true)}
-              isResetDisabled={status === "idle"}
+              isResetDisabled={status === GAME_STATUS.IDLE}
             />
           ) : null}
         </div>

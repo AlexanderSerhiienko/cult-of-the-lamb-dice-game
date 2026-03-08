@@ -1,64 +1,29 @@
 "use client";
 
-import { getAvailableColumns } from "@/features/game/core/rules";
+import { GAME_PHASE, PLAYER } from "@/features/game/core/types";
 import { BoardsStack } from "@/features/game/components/boards-stack";
 import { GameSideRail } from "@/features/game/components/game-side-rail";
 import { GameResultModal } from "@/features/game/components/game-result-modal";
 import { useBotTurnEffect } from "@/features/game/hooks/use-bot-turn-effect";
-import { useGameStore } from "@/features/game/store/use-game-store";
-
-function getResultText(winner: ReturnType<typeof useGameStore.getState>["winner"]) {
-  switch (winner) {
-    case "player":
-      return "Victory";
-    case "bot":
-      return "Defeat";
-    case "draw":
-      return "Draw";
-    default:
-      return null;
-  }
-}
-
-function getPlayerAvailableColumns(params: {
-  phase: string;
-  currentRoll: number | null;
-  interactionLocked: boolean;
-  playerBoard: ReturnType<typeof useGameStore.getState>["playerBoard"];
-}) {
-  const { phase, currentRoll, interactionLocked, playerBoard } = params;
-
-  if (phase === "player_turn" && currentRoll !== null && !interactionLocked) {
-    return getAvailableColumns(playerBoard);
-  }
-
-  return [];
-}
+import { useGamePageViewModel } from "@/features/game/hooks/use-game-page-viewmodel";
 
 export default function GamePage() {
-  const playerBoard = useGameStore((state) => state.playerBoard);
-  const botBoard = useGameStore((state) => state.botBoard);
-  const currentRoll = useGameStore((state) => state.currentRoll);
-  const scores = useGameStore((state) => state.scores);
-  const phase = useGameStore((state) => state.phase);
-  const interactionLocked = useGameStore((state) => state.interactionLocked);
-  const winner = useGameStore((state) => state.winner);
-  const rematch = useGameStore((state) => state.rematch);
-  const placePlayerDie = useGameStore((state) => state.placePlayerDie);
-  const botMove = useGameStore((state) => state.botMove);
+  const {
+    playerBoard,
+    botBoard,
+    scores,
+    phase,
+    gameFinished,
+    playerCurrentDie,
+    botCurrentDie,
+    resultText,
+    playerAvailableColumns,
+    rematch,
+    placePlayerDie,
+    botMove,
+  } = useGamePageViewModel();
 
   useBotTurnEffect({ phase, botMove });
-
-  const playerAvailableColumns = getPlayerAvailableColumns({
-    phase,
-    currentRoll,
-    interactionLocked,
-    playerBoard,
-  });
-  const gameFinished = phase === "finished";
-  const playerCurrentDie = phase === "player_turn" ? currentRoll : null;
-  const botCurrentDie = phase === "bot_turn" ? currentRoll : null;
-  const resultText = getResultText(winner);
 
   return (
     <section className="h-[calc(100vh-7.5rem)]">
@@ -66,10 +31,10 @@ export default function GamePage() {
         <GameSideRail
           scoreLabel="Your score"
           scoreValue={scores.player}
-          scoreTone="player"
+          scoreTone={PLAYER.PLAYER}
           dieLabel="Your die"
           dieValue={playerCurrentDie}
-          isActiveTurn={phase === "player_turn"}
+          isActiveTurn={phase === GAME_PHASE.PLAYER_TURN}
         />
 
         <BoardsStack
@@ -83,10 +48,10 @@ export default function GamePage() {
         <GameSideRail
           scoreLabel="Bot score"
           scoreValue={scores.bot}
-          scoreTone="bot"
+          scoreTone={PLAYER.BOT}
           dieLabel="Bot die"
           dieValue={botCurrentDie}
-          isActiveTurn={phase === "bot_turn"}
+          isActiveTurn={phase === GAME_PHASE.BOT_TURN}
         />
       </div>
 

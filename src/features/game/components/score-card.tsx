@@ -1,14 +1,16 @@
 import { SectionCard } from "@/components/ui/section-card";
+import { PLAYER } from "@/features/game/core/types";
+import type { Player } from "@/features/game/core/types";
 
 type ScoreCardProps = {
   label: string;
   value: number;
-  tone: "player" | "bot";
+  tone: Player;
 };
 
 const valueToneClass = {
-  player: "text-emerald-300",
-  bot: "text-violet-300",
+  [PLAYER.PLAYER]: "text-emerald-300",
+  [PLAYER.BOT]: "text-violet-300",
 };
 
 export function ScoreCard({ label, value, tone }: ScoreCardProps) {

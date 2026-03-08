@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { BOT_DIFFICULTY, GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
 import type { Board } from "@/features/game/core/types";
 import { useGameStore } from "./use-game-store";
 
@@ -19,8 +20,8 @@ describe("useGameStore", () => {
 
     const state = useGameStore.getState();
 
-    expect(state.status).toBe("idle");
-    expect(state.phase).toBe("idle");
+    expect(state.status).toBe(GAME_STATUS.IDLE);
+    expect(state.phase).toBe(GAME_PHASE.IDLE);
     expect(state.playerBoard).toEqual([[], [], []]);
     expect(state.botBoard).toEqual([[], [], []]);
     expect(state.scores).toEqual({ player: 0, bot: 0 });
@@ -34,17 +35,17 @@ describe("useGameStore", () => {
       playerBoard: [[1], [2], []],
       botBoard: [[3], [], []],
       scores: { player: 3, bot: 3 },
-      winner: "draw",
-      phase: "finished",
-      status: "finished",
+      winner: GAME_RESULT.DRAW,
+      phase: GAME_PHASE.FINISHED,
+      status: GAME_STATUS.FINISHED,
       interactionLocked: true,
     });
 
     useGameStore.getState().rematch();
     const state = useGameStore.getState();
 
-    expect(state.phase).toBe("player_turn");
-    expect(state.status).toBe("in_progress");
+    expect(state.phase).toBe(GAME_PHASE.PLAYER_TURN);
+    expect(state.status).toBe(GAME_STATUS.IN_PROGRESS);
     expect(state.interactionLocked).toBe(false);
     expect(state.playerBoard).toEqual([[], [], []]);
     expect(state.botBoard).toEqual([[], [], []]);
@@ -58,8 +59,8 @@ describe("useGameStore", () => {
     const state = useGameStore.getState();
     const roll = state.currentRoll;
 
-    expect(state.phase).toBe("player_turn");
-    expect(state.turn).toBe("player");
+    expect(state.phase).toBe(GAME_PHASE.PLAYER_TURN);
+    expect(state.turn).toBe(PLAYER.PLAYER);
     expect(roll).not.toBeNull();
     if (roll === null) {
       throw new Error("Expected player roll");
@@ -78,10 +79,10 @@ describe("useGameStore", () => {
     useGameStore.getState().finishGame();
     const state = useGameStore.getState();
 
-    expect(state.winner).toBe("draw");
+    expect(state.winner).toBe(GAME_RESULT.DRAW);
     expect(state.scores).toEqual({ player: 5, bot: 5 });
-    expect(state.phase).toBe("finished");
-    expect(state.status).toBe("finished");
+    expect(state.phase).toBe(GAME_PHASE.FINISHED);
+    expect(state.status).toBe(GAME_STATUS.FINISHED);
   });
 
   it("ignores second place action in same player turn", () => {
@@ -105,7 +106,7 @@ describe("useGameStore", () => {
 
     const state = useGameStore.getState();
     const roll = state.currentRoll;
-    expect(state.phase).toBe("player_turn");
+    expect(state.phase).toBe(GAME_PHASE.PLAYER_TURN);
     expect(roll).not.toBeNull();
     if (roll === null) {
       throw new Error("Expected next player roll");
@@ -115,20 +116,20 @@ describe("useGameStore", () => {
   });
 
   it("updates bot difficulty in store", () => {
-    useGameStore.getState().setBotDifficulty("hard");
+    useGameStore.getState().setBotDifficulty(BOT_DIFFICULTY.HARD);
     const state = useGameStore.getState();
 
-    expect(state.botDifficulty).toBe("hard");
+    expect(state.botDifficulty).toBe(BOT_DIFFICULTY.HARD);
   });
 
   it("resetGame keeps selected bot difficulty", () => {
-    useGameStore.getState().setBotDifficulty("easy");
+    useGameStore.getState().setBotDifficulty(BOT_DIFFICULTY.EASY);
     useGameStore.getState().startGame();
     useGameStore.getState().resetGame();
 
     const state = useGameStore.getState();
-    expect(state.botDifficulty).toBe("easy");
-    expect(state.status).toBe("idle");
+    expect(state.botDifficulty).toBe(BOT_DIFFICULTY.EASY);
+    expect(state.status).toBe(GAME_STATUS.IDLE);
   });
 
   it("persists bot difficulty to localStorage when window is available", () => {
@@ -145,8 +146,8 @@ describe("useGameStore", () => {
     };
 
     try {
-      useGameStore.getState().setBotDifficulty("hard");
-      expect(storage.get(BOT_DIFFICULTY_STORAGE_KEY)).toBe("hard");
+      useGameStore.getState().setBotDifficulty(BOT_DIFFICULTY.HARD);
+      expect(storage.get(BOT_DIFFICULTY_STORAGE_KEY)).toBe(BOT_DIFFICULTY.HARD);
     } finally {
       (globalThis as { window?: unknown }).window = originalWindow;
     }

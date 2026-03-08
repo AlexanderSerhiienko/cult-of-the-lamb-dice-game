@@ -1,4 +1,5 @@
 import { applyMove, getAvailableColumns, scoreBoard } from "./rules";
+import { BOT_DIFFICULTY } from "./types";
 import type { Board, BotDifficulty, ColumnIndex, DieValue } from "./types";
 
 export type ChooseBotColumnInput = {
@@ -26,7 +27,7 @@ export function chooseBotColumn({
   botBoard,
   playerBoard,
   dieValue,
-  difficulty = "medium",
+  difficulty = BOT_DIFFICULTY.MEDIUM,
   random = Math.random,
 }: ChooseBotColumnInput): ColumnIndex {
   const availableColumns = getAvailableColumns(botBoard);
@@ -42,11 +43,11 @@ export function chooseBotColumn({
     availableColumns,
   });
 
-  if (difficulty === "easy") {
+  if (difficulty === BOT_DIFFICULTY.EASY) {
     return chooseEasyColumn(evaluatedMoves, availableColumns, random);
   }
 
-  if (difficulty === "hard") {
+  if (difficulty === BOT_DIFFICULTY.HARD) {
     return chooseHardColumn(evaluatedMoves, random);
   }
 

@@ -1,7 +1,9 @@
+import type { GamePhase, GameStatus } from "@/features/game/core/types";
+
 type MatchInfoContentProps = {
-  status: string;
-  phase: string;
-  inputState: string;
+  status: GameStatus;
+  phase: GamePhase;
+  inputState: "locked" | "available";
 };
 
 export function MatchInfoContent({ status, phase, inputState }: MatchInfoContentProps) {

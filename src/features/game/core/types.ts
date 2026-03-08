@@ -6,20 +6,50 @@ export type Column = DieValue[];
 
 export type Board = [Column, Column, Column];
 
-export type Player = "player" | "bot";
+export const PLAYER = {
+  PLAYER: "player",
+  BOT: "bot",
+} as const;
+
+export type Player = (typeof PLAYER)[keyof typeof PLAYER];
 
 export type Turn = Player;
 
-export type GameStatus = "idle" | "in_progress" | "finished";
+export const GAME_STATUS = {
+  IDLE: "idle",
+  IN_PROGRESS: "in_progress",
+  FINISHED: "finished",
+} as const;
 
-export type GameResult = "win" | "lose" | "draw";
+export type GameStatus = (typeof GAME_STATUS)[keyof typeof GAME_STATUS];
+
+export const GAME_RESULT = {
+  WIN: "win",
+  LOSE: "lose",
+  DRAW: "draw",
+} as const;
+
+export type GameResult = (typeof GAME_RESULT)[keyof typeof GAME_RESULT];
 
 export type BoardsByPlayer = Record<Player, Board>;
 
-export type GamePhase = "idle" | "player_turn" | "bot_turn" | "finished";
+export const GAME_PHASE = {
+  IDLE: "idle",
+  PLAYER_TURN: "player_turn",
+  BOT_TURN: "bot_turn",
+  FINISHED: "finished",
+} as const;
 
-export type GameWinner = Player | "draw";
+export type GamePhase = (typeof GAME_PHASE)[keyof typeof GAME_PHASE];
+
+export type GameWinner = Player | (typeof GAME_RESULT)["DRAW"];
 
 export type PlayerScores = Record<Player, number>;
 
-export type BotDifficulty = "easy" | "medium" | "hard";
+export const BOT_DIFFICULTY = {
+  EASY: "easy",
+  MEDIUM: "medium",
+  HARD: "hard",
+} as const;
+
+export type BotDifficulty = (typeof BOT_DIFFICULTY)[keyof typeof BOT_DIFFICULTY];

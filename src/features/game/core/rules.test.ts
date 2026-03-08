@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GAME_RESULT, GAME_STATUS } from "./types";
 import {
   applyMove,
   createEmptyBoard,
@@ -170,7 +171,7 @@ describe("game end and result", () => {
         player: createEmptyBoard(),
         bot: createEmptyBoard(),
       }),
-    ).toBe("in_progress");
+    ).toBe(GAME_STATUS.IN_PROGRESS);
   });
 
   it("returns finished status when game is over", () => {
@@ -183,24 +184,24 @@ describe("game end and result", () => {
         ],
         bot: createEmptyBoard(),
       }),
-    ).toBe("finished");
+    ).toBe(GAME_STATUS.FINISHED);
   });
 
   it("returns win when player score is higher", () => {
     const playerBoard: Board = [[6, 6], [3, 3], []];
     const botBoard: Board = [[1], [2], [3]];
-    expect(determineResult(playerBoard, botBoard)).toBe("win");
+    expect(determineResult(playerBoard, botBoard)).toBe(GAME_RESULT.WIN);
   });
 
   it("returns lose when bot score is higher", () => {
     const playerBoard: Board = [[1], [], []];
     const botBoard: Board = [[6], [6], [6]];
-    expect(determineResult(playerBoard, botBoard)).toBe("lose");
+    expect(determineResult(playerBoard, botBoard)).toBe(GAME_RESULT.LOSE);
   });
 
   it("returns draw when scores are equal", () => {
     const playerBoard: Board = [[2], [3], []];
     const botBoard: Board = [[1], [4], []];
-    expect(determineResult(playerBoard, botBoard)).toBe("draw");
+    expect(determineResult(playerBoard, botBoard)).toBe(GAME_RESULT.DRAW);
   });
 });

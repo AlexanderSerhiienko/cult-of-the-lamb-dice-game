@@ -1,11 +1,11 @@
-import type { DieValue } from "@/features/game/core/types";
+import type { DieValue, Player } from "@/features/game/core/types";
 import { CurrentDieCard } from "@/features/game/components/current-die-card";
 import { ScoreCard } from "@/features/game/components/score-card";
 
 type GameSideRailProps = {
   scoreLabel: string;
   scoreValue: number;
-  scoreTone: "player" | "bot";
+  scoreTone: Player;
   dieLabel: string;
   dieValue: DieValue | null;
   isActiveTurn: boolean;

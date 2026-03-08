@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
+import { GAME_PHASE } from "@/features/game/core/types";
+import type { GamePhase } from "@/features/game/core/types";
 
 type UseBotTurnEffectParams = {
-  phase: string;
+  phase: GamePhase;
   botMove: () => void;
   delayMs?: number;
 };
 
 export function useBotTurnEffect({ phase, botMove, delayMs = 450 }: UseBotTurnEffectParams) {
   useEffect(() => {
-    if (phase !== "bot_turn") {
+    if (phase !== GAME_PHASE.BOT_TURN) {
       return;
     }
 

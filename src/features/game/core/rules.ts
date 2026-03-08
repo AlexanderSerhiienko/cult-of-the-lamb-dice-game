@@ -7,6 +7,7 @@ import type {
   GameResult,
   GameStatus,
 } from "./types";
+import { GAME_RESULT, GAME_STATUS } from "./types";
 
 export const BOARD_COLUMNS_COUNT = 3;
 export const COLUMN_CAPACITY = 3;
@@ -114,7 +115,7 @@ export function isGameOver(boards: BoardsByPlayer): boolean {
 }
 
 export function getGameStatus(boards: BoardsByPlayer): GameStatus {
-  return isGameOver(boards) ? "finished" : "in_progress";
+  return isGameOver(boards) ? GAME_STATUS.FINISHED : GAME_STATUS.IN_PROGRESS;
 }
 
 export function determineResult(playerBoard: Board, botBoard: Board): GameResult {
@@ -122,14 +123,14 @@ export function determineResult(playerBoard: Board, botBoard: Board): GameResult
   const botScore = scoreBoard(botBoard);
 
   if (playerScore > botScore) {
-    return "win";
+    return GAME_RESULT.WIN;
   }
 
   if (playerScore < botScore) {
-    return "lose";
+    return GAME_RESULT.LOSE;
   }
 
-  return "draw";
+  return GAME_RESULT.DRAW;
 }
 
 function cloneBoard(board: Board): Board {

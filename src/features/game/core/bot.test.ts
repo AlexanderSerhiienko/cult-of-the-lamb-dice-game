@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chooseBotColumn } from "./bot";
+import { BOT_DIFFICULTY } from "./types";
 import type { Board } from "./types";
 
 function createRandomSequence(values: number[]) {
@@ -34,7 +35,7 @@ describe("chooseBotColumn", () => {
       botBoard,
       playerBoard,
       dieValue: 4,
-      difficulty: "medium",
+      difficulty: BOT_DIFFICULTY.MEDIUM,
       random: () => 0,
     });
 
@@ -50,7 +51,7 @@ describe("chooseBotColumn", () => {
       botBoard,
       playerBoard,
       dieValue: 4,
-      difficulty: "easy",
+      difficulty: BOT_DIFFICULTY.EASY,
       random,
     });
 
@@ -69,14 +70,14 @@ describe("chooseBotColumn", () => {
       botBoard,
       playerBoard,
       dieValue: 6,
-      difficulty: "medium",
+      difficulty: BOT_DIFFICULTY.MEDIUM,
       random: () => 0,
     });
     const hardResult = chooseBotColumn({
       botBoard,
       playerBoard,
       dieValue: 6,
-      difficulty: "hard",
+      difficulty: BOT_DIFFICULTY.HARD,
       random: () => 0,
     });
 

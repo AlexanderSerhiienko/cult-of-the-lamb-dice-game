@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Toast } from "@/components/ui/toast";
+import { BOT_DIFFICULTY } from "@/features/game/core/types";
 import { useGameStore } from "@/features/game/store/use-game-store";
 import type { BotDifficulty } from "@/features/game/core/types";
 
@@ -12,17 +13,17 @@ const difficultyOptions: Array<{
   description: string;
 }> = [
   {
-    value: "easy",
+    value: BOT_DIFFICULTY.EASY,
     title: "Easy",
     description: "Mostly random moves. Makes frequent mistakes and is forgiving.",
   },
   {
-    value: "medium",
+    value: BOT_DIFFICULTY.MEDIUM,
     title: "Medium",
     description: "Greedy one-turn evaluation. Punishes obvious mistakes.",
   },
   {
-    value: "hard",
+    value: BOT_DIFFICULTY.HARD,
     title: "Hard",
     description: "Greedy + lookahead against your possible responses.",
   },
