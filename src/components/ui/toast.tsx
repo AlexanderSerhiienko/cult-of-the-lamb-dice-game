@@ -17,13 +17,18 @@ export function Toast({ eventKey, message, durationMs = 1400, className = "" }: 
       return;
     }
 
-    setVisible(true);
+    const animationFrameId = window.requestAnimationFrame(() => {
+      setVisible(true);
+    });
 
     const timeoutId = window.setTimeout(() => {
       setVisible(false);
     }, durationMs);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      window.clearTimeout(timeoutId);
+    };
   }, [durationMs, eventKey]);
 
   if (!visible) {

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import type { Board, ColumnIndex, DieValue } from "@/features/game/core/types";
+import type { Board, ColumnIndex } from "@/features/game/core/types";
 import { DiceFace } from "@/features/game/components/dice-face";
+import { useBoardSlotAnimations } from "@/features/game/hooks/use-board-slot-animations";
 
 function getBoardPanelClass(isActive: boolean) {
   if (isActive) {
@@ -47,73 +47,8 @@ export function GameBoard({
   interactiveColumns = [],
   onSelectColumn,
 }: GameBoardProps) {
-  const previousBoardRef = useRef<Board | null>(null);
-  const [impactSlots, setImpactSlots] = useState<Record<string, true>>({});
-  const [removedSlots, setRemovedSlots] = useState<Record<string, true>>({});
-  const [removedValues, setRemovedValues] = useState<Record<string, DieValue>>({});
-
-  useEffect(() => {
-    const previousBoard = previousBoardRef.current;
-    previousBoardRef.current = board;
-
-    if (!previousBoard) {
-      return;
-    }
-
-    const nextImpactSlots: Record<string, true> = {};
-    const nextRemovedSlots: Record<string, true> = {};
-    const nextRemovedValues: Record<string, DieValue> = {};
-
-    for (let columnIndex = 0; columnIndex < 3; columnIndex += 1) {
-      for (let slotIndex = 0; slotIndex < 3; slotIndex += 1) {
-        const prevValue = previousBoard[columnIndex][slotIndex];
-        const nextValue = board[columnIndex][slotIndex];
-        const slotKey = `${columnIndex}-${slotIndex}`;
-
-        if (typeof prevValue !== "number" && typeof nextValue === "number") {
-          nextImpactSlots[slotKey] = true;
-        }
-
-        if (typeof prevValue === "number" && typeof nextValue !== "number") {
-          nextRemovedSlots[slotKey] = true;
-          nextRemovedValues[slotKey] = prevValue;
-        }
-      }
-    }
-
-    if (Object.keys(nextImpactSlots).length > 0) {
-      window.setTimeout(() => {
-        setImpactSlots((prev) => ({ ...prev, ...nextImpactSlots }));
-      }, 0);
-      window.setTimeout(() => {
-        setImpactSlots((prev) => {
-          const next = { ...prev };
-          Object.keys(nextImpactSlots).forEach((key) => delete next[key]);
-          return next;
-        });
-      }, 300);
-    }
-
-    if (Object.keys(nextRemovedSlots).length > 0) {
-      window.setTimeout(() => {
-        setRemovedSlots((prev) => ({ ...prev, ...nextRemovedSlots }));
-        setRemovedValues((prev) => ({ ...prev, ...nextRemovedValues }));
-      }, 0);
-
-      window.setTimeout(() => {
-        setRemovedSlots((prev) => {
-          const next = { ...prev };
-          Object.keys(nextRemovedSlots).forEach((key) => delete next[key]);
-          return next;
-        });
-        setRemovedValues((prev) => {
-          const next = { ...prev };
-          Object.keys(nextRemovedSlots).forEach((key) => delete next[key]);
-          return next;
-        });
-      }, 320);
-    }
-  }, [board]);
+  const { impactSlots, removedSlots, removedValues, clearImpactSlot, clearRemovedSlot } =
+    useBoardSlotAnimations(board);
 
   return (
     <section className={`mx-auto w-fit rounded-xl border p-4 ${getBoardPanelClass(isActive)}`}>
@@ -161,11 +96,25 @@ export function GameBoard({
                       isFilled,
                       isBoosted,
                     )} ${slotAnimationClass}`}
+                    onAnimationEnd={(event) => {
+                      if (event.target !== event.currentTarget || !isImpact) {
+                        return;
+                      }
+                      clearImpactSlot(slotKey);
+                    }}
                   >
                     <div className="flex h-full items-center justify-center">
                       {isFilled ? <DiceFace value={value} size="sm" boosted={isBoosted} /> : null}
                       {!isFilled && isRemoved && removedValue ? (
-                        <div className="animate-die-remove">
+                        <div
+                          className="animate-die-remove"
+                          onAnimationEnd={(event) => {
+                            if (event.target !== event.currentTarget) {
+                              return;
+                            }
+                            clearRemovedSlot(slotKey);
+                          }}
+                        >
                           <DiceFace value={removedValue} size="sm" animate={false} />
                         </div>
                       ) : null}
