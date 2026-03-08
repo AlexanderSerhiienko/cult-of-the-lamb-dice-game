@@ -21,3 +21,5 @@ export type GamePhase = "idle" | "player_turn" | "bot_turn" | "finished";
 export type GameWinner = Player | "draw";
 
 export type PlayerScores = Record<Player, number>;
+
+export type BotDifficulty = "easy" | "medium" | "hard";

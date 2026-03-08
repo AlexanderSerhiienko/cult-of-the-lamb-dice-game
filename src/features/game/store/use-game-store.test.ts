@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Board } from "@/features/game/core/types";
 import { useGameStore } from "./use-game-store";
 
+const BOT_DIFFICULTY_STORAGE_KEY = "knucklebones.botDifficulty";
+
 function countDice(board: Board): number {
   return board[0].length + board[1].length + board[2].length;
 }
@@ -111,4 +113,43 @@ describe("useGameStore", () => {
     expect(roll).toBeGreaterThanOrEqual(1);
     expect(roll).toBeLessThanOrEqual(6);
   });
+
+  it("updates bot difficulty in store", () => {
+    useGameStore.getState().setBotDifficulty("hard");
+    const state = useGameStore.getState();
+
+    expect(state.botDifficulty).toBe("hard");
+  });
+
+  it("resetGame keeps selected bot difficulty", () => {
+    useGameStore.getState().setBotDifficulty("easy");
+    useGameStore.getState().startGame();
+    useGameStore.getState().resetGame();
+
+    const state = useGameStore.getState();
+    expect(state.botDifficulty).toBe("easy");
+    expect(state.status).toBe("idle");
+  });
+
+  it("persists bot difficulty to localStorage when window is available", () => {
+    const storage = new Map<string, string>();
+    const originalWindow = (globalThis as { window?: unknown }).window;
+
+    (globalThis as { window?: unknown }).window = {
+      localStorage: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          storage.set(key, value);
+        },
+      },
+    };
+
+    try {
+      useGameStore.getState().setBotDifficulty("hard");
+      expect(storage.get(BOT_DIFFICULTY_STORAGE_KEY)).toBe("hard");
+    } finally {
+      (globalThis as { window?: unknown }).window = originalWindow;
+    }
+  });
+
 });

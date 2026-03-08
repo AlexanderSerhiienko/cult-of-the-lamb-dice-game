@@ -11,6 +11,7 @@ import {
 } from "@/features/game/core/rules";
 import type {
   Board,
+  BotDifficulty,
   ColumnIndex,
   DieValue,
   GamePhase,
@@ -30,7 +31,9 @@ type GameState = {
   scores: PlayerScores;
   status: GameStatus;
   winner: GameWinner | null;
+  botDifficulty: BotDifficulty;
   startGame: () => void;
+  setBotDifficulty: (difficulty: BotDifficulty) => void;
   placePlayerDie: (columnIndex: ColumnIndex) => void;
   botMove: () => void;
   recalculateScores: () => void;
@@ -40,10 +43,37 @@ type GameState = {
 };
 
 const initialBoards = createInitialBoards();
+const BOT_DIFFICULTY_STORAGE_KEY = "knucklebones.botDifficulty";
+
+function isBotDifficulty(value: string): value is BotDifficulty {
+  return value === "easy" || value === "medium" || value === "hard";
+}
+
+function readBotDifficulty(): BotDifficulty {
+  if (typeof window === "undefined") {
+    return "medium";
+  }
+
+  const raw = window.localStorage.getItem(BOT_DIFFICULTY_STORAGE_KEY);
+  if (raw && isBotDifficulty(raw)) {
+    return raw;
+  }
+
+  return "medium";
+}
+
+function writeBotDifficulty(difficulty: BotDifficulty): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(BOT_DIFFICULTY_STORAGE_KEY, difficulty);
+}
 
 const initialState: Omit<
   GameState,
   | "startGame"
+  | "setBotDifficulty"
   | "placePlayerDie"
   | "botMove"
   | "recalculateScores"
@@ -60,6 +90,7 @@ const initialState: Omit<
   scores: { player: 0, bot: 0 },
   status: "idle",
   winner: null,
+  botDifficulty: readBotDifficulty(),
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -77,6 +108,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       status: "in_progress",
       winner: null,
     });
+  },
+  setBotDifficulty: (difficulty) => {
+    writeBotDifficulty(difficulty);
+    set({ botDifficulty: difficulty });
   },
   placePlayerDie: (columnIndex) => {
     const state = get();
@@ -144,6 +179,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       botBoard: state.botBoard,
       playerBoard: state.playerBoard,
       dieValue: roll,
+      difficulty: state.botDifficulty,
     });
 
     const { nextCurrentBoard, nextOpponentBoard } = applyMove({
@@ -221,5 +257,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       winner: null,
     });
   },
-  resetGame: () => set(initialState),
+  resetGame: () => {
+    const state = get();
+    set({
+      ...initialState,
+      botDifficulty: state.botDifficulty,
+    });
+  },
 }));

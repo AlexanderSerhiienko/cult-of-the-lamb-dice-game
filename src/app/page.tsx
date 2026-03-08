@@ -8,7 +8,7 @@ export default function Home() {
       description="Browser-based dice duel inspired by Cult of the Lamb. Choose a mode and start playing."
     >
       <MenuActionButton href="/game">New game with bot</MenuActionButton>
-      <MenuActionButton disabled>Settings (coming soon)</MenuActionButton>
+      <MenuActionButton href="/settings">Settings</MenuActionButton>
     </MenuCard>
   );
 }

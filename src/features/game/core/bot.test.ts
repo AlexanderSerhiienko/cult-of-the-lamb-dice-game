@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { chooseBotColumn } from "./bot";
 import type { Board } from "./types";
 
+function createRandomSequence(values: number[]) {
+  let index = 0;
+  return () => {
+    const value = values[index] ?? values[values.length - 1] ?? 0;
+    index += 1;
+    return value;
+  };
+}
+
 describe("chooseBotColumn", () => {
   it("returns one of available columns", () => {
     const botBoard: Board = [[1, 2, 3], [], []];
@@ -25,10 +34,54 @@ describe("chooseBotColumn", () => {
       botBoard,
       playerBoard,
       dieValue: 4,
+      difficulty: "medium",
       random: () => 0,
     });
 
     expect(result).toBe(0);
+  });
+
+  it("easy mode can pick non-optimal random move", () => {
+    const botBoard: Board = [[], [], []];
+    const playerBoard: Board = [[4, 4], [], []];
+    const random = createRandomSequence([0.1, 0.95]);
+
+    const result = chooseBotColumn({
+      botBoard,
+      playerBoard,
+      dieValue: 4,
+      difficulty: "easy",
+      random,
+    });
+
+    expect(result).toBe(2);
+  });
+
+  it("hard mode evaluates lookahead and always returns available column", () => {
+    const botBoard: Board = [
+      [6, 6],
+      [2, 2],
+      [],
+    ];
+    const playerBoard: Board = [[], [1, 1], []];
+
+    const mediumResult = chooseBotColumn({
+      botBoard,
+      playerBoard,
+      dieValue: 6,
+      difficulty: "medium",
+      random: () => 0,
+    });
+    const hardResult = chooseBotColumn({
+      botBoard,
+      playerBoard,
+      dieValue: 6,
+      difficulty: "hard",
+      random: () => 0,
+    });
+
+    expect(mediumResult).toBe(0);
+    expect([0, 1, 2]).toContain(hardResult);
   });
 
   it("throws when bot has no available columns", () => {

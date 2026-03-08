@@ -82,7 +82,9 @@ export function GameBoard({
     }
 
     if (Object.keys(nextImpactSlots).length > 0) {
-      setImpactSlots((prev) => ({ ...prev, ...nextImpactSlots }));
+      window.setTimeout(() => {
+        setImpactSlots((prev) => ({ ...prev, ...nextImpactSlots }));
+      }, 0);
       window.setTimeout(() => {
         setImpactSlots((prev) => {
           const next = { ...prev };
@@ -93,8 +95,10 @@ export function GameBoard({
     }
 
     if (Object.keys(nextRemovedSlots).length > 0) {
-      setRemovedSlots((prev) => ({ ...prev, ...nextRemovedSlots }));
-      setRemovedValues((prev) => ({ ...prev, ...nextRemovedValues }));
+      window.setTimeout(() => {
+        setRemovedSlots((prev) => ({ ...prev, ...nextRemovedSlots }));
+        setRemovedValues((prev) => ({ ...prev, ...nextRemovedValues }));
+      }, 0);
 
       window.setTimeout(() => {
         setRemovedSlots((prev) => {

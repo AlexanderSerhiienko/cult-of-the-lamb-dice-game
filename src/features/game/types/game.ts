@@ -1,4 +1,5 @@
 export type {
+  BotDifficulty,
   Board,
   BoardsByPlayer,
   Column,
