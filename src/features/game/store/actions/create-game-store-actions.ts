@@ -11,8 +11,10 @@ import {
 } from "@/features/game/core/rules";
 import { GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
 import type { GameWinner } from "@/features/game/core/types";
+import { GAME_SFX_EVENT, playGameSfx } from "@/features/game/sound/game-sfx";
 import { createInitialGameStoreState } from "@/features/game/store/state/create-initial-game-store-state";
 import { writeBotDifficulty } from "@/features/game/store/storage/bot-difficulty-storage";
+import { writeSoundEnabled } from "@/features/game/store/storage/sound-storage";
 import type { GameStore, GameStoreActions } from "@/features/game/store/types/game-store";
 
 type SetState = StoreApi<GameStore>["setState"];
@@ -43,6 +45,10 @@ export function createGameStoreActions(params: {
       writeBotDifficulty(difficulty);
       set({ botDifficulty: difficulty });
     },
+    setSoundEnabled: (enabled) => {
+      writeSoundEnabled(enabled);
+      set({ soundEnabled: enabled });
+    },
     placePlayerDie: (columnIndex) => {
       const state = get();
 
@@ -72,6 +78,12 @@ export function createGameStoreActions(params: {
         player: scoreBoard(nextCurrentBoard),
         bot: scoreBoard(nextOpponentBoard),
       };
+      const removedDiceCount = state.botBoard[columnIndex].length - nextOpponentBoard[columnIndex].length;
+
+      playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
+      if (removedDiceCount > 0) {
+        playGameSfx(GAME_SFX_EVENT.REMOVE, state.soundEnabled);
+      }
 
       const status = getGameStatus({
         player: nextCurrentBoard,
@@ -127,6 +139,12 @@ export function createGameStoreActions(params: {
         player: scoreBoard(nextOpponentBoard),
         bot: scoreBoard(nextCurrentBoard),
       };
+      const removedDiceCount = state.playerBoard[botColumn].length - nextOpponentBoard[botColumn].length;
+
+      playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
+      if (removedDiceCount > 0) {
+        playGameSfx(GAME_SFX_EVENT.REMOVE, state.soundEnabled);
+      }
 
       const status = getGameStatus({
         player: nextOpponentBoard,
@@ -173,6 +191,14 @@ export function createGameStoreActions(params: {
             ? PLAYER.PLAYER
             : PLAYER.BOT;
 
+      if (winner === PLAYER.PLAYER) {
+        playGameSfx(GAME_SFX_EVENT.VICTORY, state.soundEnabled);
+      } else if (winner === PLAYER.BOT) {
+        playGameSfx(GAME_SFX_EVENT.DEFEAT, state.soundEnabled);
+      } else {
+        playGameSfx(GAME_SFX_EVENT.DRAW, state.soundEnabled);
+      }
+
       set({
         phase: GAME_PHASE.FINISHED,
         status: GAME_STATUS.FINISHED,
@@ -198,7 +224,12 @@ export function createGameStoreActions(params: {
     },
     resetGame: () => {
       const state = get();
-      set(createInitialGameStoreState(state.botDifficulty));
+      set(
+        createInitialGameStoreState({
+          botDifficulty: state.botDifficulty,
+          soundEnabled: state.soundEnabled,
+        }),
+      );
     },
   };
 }

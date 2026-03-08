@@ -21,11 +21,13 @@ export type GameStoreState = {
   status: GameStatus;
   winner: GameWinner | null;
   botDifficulty: BotDifficulty;
+  soundEnabled: boolean;
 };
 
 export type GameStoreActions = {
   startGame: () => void;
   setBotDifficulty: (difficulty: BotDifficulty) => void;
+  setSoundEnabled: (enabled: boolean) => void;
   placePlayerDie: (columnIndex: ColumnIndex) => void;
   botMove: () => void;
   recalculateScores: () => void;

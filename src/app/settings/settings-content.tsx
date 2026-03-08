@@ -32,6 +32,8 @@ const difficultyOptions: Array<{
 export default function SettingsContent() {
   const botDifficulty = useGameStore((state) => state.botDifficulty);
   const setBotDifficulty = useGameStore((state) => state.setBotDifficulty);
+  const soundEnabled = useGameStore((state) => state.soundEnabled);
+  const setSoundEnabled = useGameStore((state) => state.setSoundEnabled);
   const [toastTrigger, setToastTrigger] = useState(0);
 
   const handleDifficultyChange = (difficulty: BotDifficulty) => {
@@ -43,17 +45,23 @@ export default function SettingsContent() {
     setToastTrigger((prev) => prev + 1);
   };
 
+  const handleSoundToggle = () => {
+    setSoundEnabled(!soundEnabled);
+    setToastTrigger((prev) => prev + 1);
+  };
+
   return (
     <>
       <section className="mx-auto max-w-2xl space-y-6 rounded-2xl border border-slate-700 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40 md:p-8">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-slate-100 md:text-4xl">Settings</h1>
           <p className="text-sm text-slate-300/85 md:text-base">
-            Choose bot difficulty. The selected level is saved for future sessions.
+            Configure gameplay settings. Changes are saved automatically.
           </p>
         </div>
 
         <div className="space-y-3" role="radiogroup" aria-label="Bot difficulty">
+          <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Bot difficulty</p>
           {difficultyOptions.map((option) => {
             const isActive = botDifficulty === option.value;
 
@@ -79,6 +87,29 @@ export default function SettingsContent() {
               </label>
             );
           })}
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Sound</p>
+          <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">Sound effects</p>
+              <p className="mt-1 text-xs text-slate-300">Enable gameplay sounds for actions and results.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSoundToggle}
+              className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
+                soundEnabled
+                  ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200"
+                  : "border-slate-600 bg-slate-900 text-slate-300"
+              }`}
+            >
+              {soundEnabled ? "On" : "Off"}
+            </button>
+          </div>
+        </div>
         </div>
 
         <div className="flex items-center gap-3 pt-2">
