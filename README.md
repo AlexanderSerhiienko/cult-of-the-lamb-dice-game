@@ -8,7 +8,7 @@ This project is inspired by the Knucklebones mini-game from *Cult of the Lamb* a
 
 ## Live Demo
 
-**Vercel:** _placeholder for vercel site_
+**Vercel:** [https://cult-of-the-lamb-dice-game.vercel.app/](https://cult-of-the-lamb-dice-game.vercel.app/)
 
 ## What the Game Is
 
