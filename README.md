@@ -92,15 +92,15 @@ Not in MVP:
 
 ## Roadmap
 
-### Phase 1
+### ~~Phase 1~~
 
-- MVP with base rules and light design (**completed**)
+- ~~MVP with base rules and light design~~
 
-### Phase 2
+### ~~Phase 2~~
 
-- Multiple bot difficulties
-- Score breakdown by column
-- Advanced dice animations
+- ~~Multiple bot difficulties~~
+- ~~Score breakdown by column~~
+- ~~Advanced dice animations~~
 
 ### Phase 3
 
