@@ -5,13 +5,6 @@
   --foreground: #e2e8f0;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
@@ -20,4 +13,149 @@ body {
     radial-gradient(circle at 20% 0%, rgba(99, 102, 241, 0.12), transparent 38%),
     radial-gradient(circle at 80% 0%, rgba(16, 185, 129, 0.1), transparent 32%),
     linear-gradient(to bottom, #020617, #0b1220 35%, #0a0f1a);
+}
+
+@keyframes roll-reveal {
+  0% {
+    transform: translateY(-16px) scale(0.92) rotate(-8deg);
+    opacity: 0;
+  }
+  58% {
+    transform: translateY(1px) scale(1.03) rotate(2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes score-pop {
+  0% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+  42% {
+    transform: scale(1.09);
+    filter: brightness(1.16) saturate(1.08);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes slot-impact {
+  0% {
+    transform: scale(0.94);
+    filter: brightness(1.2);
+  }
+  55% {
+    transform: scale(1.03);
+    filter: brightness(1.08);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes die-remove {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.65) translateY(-8px);
+  }
+}
+
+@keyframes turn-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  }
+}
+
+@keyframes selectable-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.04);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.03);
+  }
+}
+
+@keyframes boosted-shimmer {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    filter: saturate(1.12) brightness(1.05);
+  }
+}
+
+@keyframes modal-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.975);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-roll-reveal {
+  animation: roll-reveal 340ms cubic-bezier(0.2, 0.75, 0.2, 1);
+  transform-origin: center;
+}
+
+.animate-score-pop {
+  animation: score-pop 320ms cubic-bezier(0.2, 0.75, 0.2, 1);
+  transform-origin: center;
+}
+
+.animate-slot-impact {
+  animation: slot-impact 240ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+
+.animate-die-remove {
+  animation: die-remove 260ms cubic-bezier(0.3, 0, 0.7, 0.2) forwards;
+}
+
+.animate-turn-pulse {
+  animation: turn-pulse 2.6s ease-in-out infinite;
+}
+
+.animate-selectable-pulse {
+  animation: selectable-pulse 2.4s ease-in-out infinite;
+}
+
+.animate-boosted-shimmer {
+  animation: boosted-shimmer 3s ease-in-out infinite;
+}
+
+.animate-modal-pop {
+  animation: modal-pop 260ms cubic-bezier(0.2, 0.75, 0.2, 1);
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-roll-reveal,
+  .animate-score-pop,
+  .animate-slot-impact,
+  .animate-die-remove,
+  .animate-turn-pulse,
+  .animate-selectable-pulse,
+  .animate-boosted-shimmer,
+  .animate-modal-pop {
+    animation: none;
+  }
 }

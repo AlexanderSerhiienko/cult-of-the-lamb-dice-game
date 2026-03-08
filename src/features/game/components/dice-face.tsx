@@ -5,6 +5,7 @@ type DiceFaceProps = {
   size?: "sm" | "md" | "lg";
   highlighted?: boolean;
   boosted?: boolean;
+  animate?: boolean;
 };
 
 const pipByValue: Record<DieValue, number[]> = {
@@ -46,11 +47,36 @@ function getToneClass(highlighted: boolean, boosted: boolean) {
   return "border-slate-300 bg-slate-100";
 }
 
-export function DiceFace({ value, size = "md", highlighted = false, boosted = false }: DiceFaceProps) {
+function getAnimationClass(params: { animate: boolean; boosted: boolean; highlighted: boolean }) {
+  const { animate, boosted, highlighted } = params;
+  const classes: string[] = [];
+
+  if (animate) {
+    classes.push("animate-roll-reveal");
+  }
+
+  if (boosted && !highlighted) {
+    classes.push("animate-boosted-shimmer");
+  }
+
+  return classes.join(" ");
+}
+
+export function DiceFace({
+  value,
+  size = "md",
+  highlighted = false,
+  boosted = false,
+  animate = true,
+}: DiceFaceProps) {
   const toneClass = getToneClass(highlighted, boosted);
+  const animationClass = getAnimationClass({ animate, boosted, highlighted });
 
   return (
-    <div className={`relative border shadow-sm ${sizeClass[size]} ${toneClass}`} aria-label={`Dice ${value}`}>
+    <div
+      className={`relative border shadow-sm ${sizeClass[size]} ${toneClass} ${animationClass}`}
+      aria-label={`Dice ${value}`}
+    >
       {pipByValue[value].map((pip) => (
         <span
           key={pip}

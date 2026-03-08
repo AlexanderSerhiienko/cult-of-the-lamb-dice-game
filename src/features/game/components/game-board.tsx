@@ -1,4 +1,5 @@
-import type { Board, ColumnIndex } from "@/features/game/core/types";
+import { useEffect, useRef, useState } from "react";
+import type { Board, ColumnIndex, DieValue } from "@/features/game/core/types";
 import { DiceFace } from "@/features/game/components/dice-face";
 
 function getBoardPanelClass(isActive: boolean) {
@@ -11,7 +12,7 @@ function getBoardPanelClass(isActive: boolean) {
 
 function getColumnButtonClass(canSelect: boolean) {
   if (canSelect) {
-    return "cursor-pointer border-emerald-400/60 bg-emerald-400/10 shadow-sm ring-1 ring-emerald-400/40 hover:-translate-y-0.5 hover:bg-emerald-300/15 hover:shadow-md focus-visible:ring-2 focus-visible:ring-emerald-300/70";
+    return "cursor-pointer border-emerald-400/60 bg-emerald-400/10 shadow-sm ring-1 ring-emerald-400/40 hover:-translate-y-0.5 hover:bg-emerald-300/15 hover:shadow-md focus-visible:ring-2 focus-visible:ring-emerald-300/70 animate-selectable-pulse";
   }
 
   return "cursor-not-allowed border-slate-700 bg-slate-950/50 opacity-90";
@@ -46,6 +47,70 @@ export function GameBoard({
   interactiveColumns = [],
   onSelectColumn,
 }: GameBoardProps) {
+  const previousBoardRef = useRef<Board | null>(null);
+  const [impactSlots, setImpactSlots] = useState<Record<string, true>>({});
+  const [removedSlots, setRemovedSlots] = useState<Record<string, true>>({});
+  const [removedValues, setRemovedValues] = useState<Record<string, DieValue>>({});
+
+  useEffect(() => {
+    const previousBoard = previousBoardRef.current;
+    previousBoardRef.current = board;
+
+    if (!previousBoard) {
+      return;
+    }
+
+    const nextImpactSlots: Record<string, true> = {};
+    const nextRemovedSlots: Record<string, true> = {};
+    const nextRemovedValues: Record<string, DieValue> = {};
+
+    for (let columnIndex = 0; columnIndex < 3; columnIndex += 1) {
+      for (let slotIndex = 0; slotIndex < 3; slotIndex += 1) {
+        const prevValue = previousBoard[columnIndex][slotIndex];
+        const nextValue = board[columnIndex][slotIndex];
+        const slotKey = `${columnIndex}-${slotIndex}`;
+
+        if (typeof prevValue !== "number" && typeof nextValue === "number") {
+          nextImpactSlots[slotKey] = true;
+        }
+
+        if (typeof prevValue === "number" && typeof nextValue !== "number") {
+          nextRemovedSlots[slotKey] = true;
+          nextRemovedValues[slotKey] = prevValue;
+        }
+      }
+    }
+
+    if (Object.keys(nextImpactSlots).length > 0) {
+      setImpactSlots((prev) => ({ ...prev, ...nextImpactSlots }));
+      window.setTimeout(() => {
+        setImpactSlots((prev) => {
+          const next = { ...prev };
+          Object.keys(nextImpactSlots).forEach((key) => delete next[key]);
+          return next;
+        });
+      }, 300);
+    }
+
+    if (Object.keys(nextRemovedSlots).length > 0) {
+      setRemovedSlots((prev) => ({ ...prev, ...nextRemovedSlots }));
+      setRemovedValues((prev) => ({ ...prev, ...nextRemovedValues }));
+
+      window.setTimeout(() => {
+        setRemovedSlots((prev) => {
+          const next = { ...prev };
+          Object.keys(nextRemovedSlots).forEach((key) => delete next[key]);
+          return next;
+        });
+        setRemovedValues((prev) => {
+          const next = { ...prev };
+          Object.keys(nextRemovedSlots).forEach((key) => delete next[key]);
+          return next;
+        });
+      }, 320);
+    }
+  }, [board]);
+
   return (
     <section className={`mx-auto w-fit rounded-xl border p-4 ${getBoardPanelClass(isActive)}`}>
       <div className="mb-4 flex items-center justify-between">
@@ -79,11 +144,27 @@ export function GameBoard({
                 const value = column[slotIndex];
                 const isBoosted = typeof value === "number" ? valueCounts[value] > 1 : false;
                 const isFilled = typeof value === "number";
+                const slotKey = `${columnIndex}-${slotIndex}`;
+                const isImpact = Boolean(impactSlots[slotKey]);
+                const isRemoved = Boolean(removedSlots[slotKey]);
+                const removedValue = removedValues[slotKey];
+                const slotAnimationClass = isImpact ? "animate-slot-impact" : "";
 
                 return (
-                  <div key={slotIndex} className={`aspect-square w-full rounded-lg border ${getSlotClass(isFilled, isBoosted)}`}>
+                  <div
+                    key={slotIndex}
+                    className={`aspect-square w-full rounded-lg border ${getSlotClass(
+                      isFilled,
+                      isBoosted,
+                    )} ${slotAnimationClass}`}
+                  >
                     <div className="flex h-full items-center justify-center">
                       {isFilled ? <DiceFace value={value} size="sm" boosted={isBoosted} /> : null}
+                      {!isFilled && isRemoved && removedValue ? (
+                        <div className="animate-die-remove">
+                          <DiceFace value={removedValue} size="sm" animate={false} />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );

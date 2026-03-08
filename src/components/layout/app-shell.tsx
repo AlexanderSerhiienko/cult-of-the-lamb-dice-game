@@ -26,7 +26,7 @@ export function AppShell({ children }: AppShellProps) {
   const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
           <div className="text-lg font-semibold text-slate-100">Knucklebones</div>

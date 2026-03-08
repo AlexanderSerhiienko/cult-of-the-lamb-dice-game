@@ -15,7 +15,9 @@ export function ScoreCard({ label, value, tone }: ScoreCardProps) {
   return (
     <SectionCard className="text-center">
       <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className={`mt-3 text-6xl font-black ${valueToneClass[tone]}`}>{value}</p>
+      <p key={`${label}-${value}`} className={`mt-3 text-6xl font-black animate-score-pop ${valueToneClass[tone]}`}>
+        {value}
+      </p>
     </SectionCard>
   );
 }
