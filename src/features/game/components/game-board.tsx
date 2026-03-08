@@ -1,4 +1,5 @@
 import type { Board, ColumnIndex } from "@/features/game/core/types";
+import { scoreColumn } from "@/features/game/core/rules";
 import { DiceFace } from "@/features/game/components/dice-face";
 import { useBoardSlotAnimations } from "@/features/game/hooks/use-board-slot-animations";
 
@@ -28,6 +29,22 @@ function getSlotClass(isFilled: boolean, isBoosted: boolean) {
   }
 
   return "border-slate-600 bg-slate-800/90";
+}
+
+type ColumnScoreBadgeProps = {
+  score: number;
+};
+
+function ColumnScoreBadge({ score }: ColumnScoreBadgeProps) {
+  return (
+    <span
+      className={`animate-score-pop text-center text-xs font-semibold ${
+        score > 0 ? "text-slate-200" : "text-slate-500"
+      }`}
+    >
+      {score}
+    </span>
+  );
 }
 
 type GameBoardProps = {
@@ -70,6 +87,7 @@ export function GameBoard({
             acc[value] = (acc[value] ?? 0) + 1;
             return acc;
           }, {});
+          const columnScore = scoreColumn(column);
 
           return (
             <button
@@ -79,6 +97,7 @@ export function GameBoard({
               disabled={!canSelect}
               className={`flex w-[5.5rem] flex-col gap-2 rounded-lg border p-2 text-left transition focus-visible:outline-none md:w-[6.25rem] ${getColumnButtonClass(canSelect)}`}
             >
+              <ColumnScoreBadge key={`${columnIndex}-${columnScore}`} score={columnScore} />
               {renderedSlots.map((slotIndex) => {
                 const value = column[slotIndex];
                 const isBoosted = typeof value === "number" ? valueCounts[value] > 1 : false;
