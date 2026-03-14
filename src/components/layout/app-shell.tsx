@@ -10,6 +10,7 @@ import { GAME_STATUS } from "@/features/game/core/types";
 import { MatchInfoContent } from "@/features/game/components/match-info-content";
 import { RulesModalContent } from "@/features/game/components/rules-modal-content";
 import { useGameStore } from "@/features/game/store/use-game-store";
+import { useRouteLeave } from "@/hooks/use-route-leave";
 
 type AppShellProps = {
   children: ReactNode;
@@ -25,6 +26,12 @@ export function AppShell({ children }: AppShellProps) {
   const interactionLocked = useGameStore((state) => state.interactionLocked);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isMatchInfoOpen, setIsMatchInfoOpen] = useState(false);
+
+  useRouteLeave({
+    pathname,
+    isInScope: (path) => path === "/game" || path.startsWith("/game/"),
+    onLeave: resetGame,
+  });
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
