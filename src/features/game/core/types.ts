@@ -53,3 +53,10 @@ export const BOT_DIFFICULTY = {
 } as const;
 
 export type BotDifficulty = (typeof BOT_DIFFICULTY)[keyof typeof BOT_DIFFICULTY];
+
+export const GAME_MODE = {
+  PVB: "pvb",
+  LOCAL_PVP: "local_pvp",
+} as const;
+
+export type GameMode = (typeof GAME_MODE)[keyof typeof GAME_MODE];

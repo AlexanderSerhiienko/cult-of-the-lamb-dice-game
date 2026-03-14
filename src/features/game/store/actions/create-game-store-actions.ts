@@ -9,7 +9,7 @@ import {
   rollDie,
   scoreBoard,
 } from "@/features/game/core/rules";
-import { GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
+import { GAME_MODE, GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
 import type { GameWinner } from "@/features/game/core/types";
 import { GAME_SFX_EVENT, playGameSfx } from "@/features/game/sound/game-sfx";
 import { createInitialGameStoreState } from "@/features/game/store/state/create-initial-game-store-state";
@@ -41,6 +41,9 @@ export function createGameStoreActions(params: {
         winner: null,
       });
     },
+    setGameMode: (mode) => {
+      set({ gameMode: mode });
+    },
     setBotDifficulty: (difficulty) => {
       writeBotDifficulty(difficulty);
       set({ botDifficulty: difficulty });
@@ -51,16 +54,18 @@ export function createGameStoreActions(params: {
     },
     placePlayerDie: (columnIndex) => {
       const state = get();
+      const isPlayerTurn = state.phase === GAME_PHASE.PLAYER_TURN;
+      const isLocalOpponentTurn =
+        state.gameMode === GAME_MODE.LOCAL_PVP && state.phase === GAME_PHASE.BOT_TURN;
+      const isHumanTurn = isPlayerTurn || isLocalOpponentTurn;
 
-      if (
-        state.interactionLocked ||
-        state.phase !== GAME_PHASE.PLAYER_TURN ||
-        state.currentRoll === null
-      ) {
+      if (state.interactionLocked || !isHumanTurn || state.currentRoll === null) {
         return;
       }
 
-      const availableColumns = getAvailableColumns(state.playerBoard);
+      const activeBoard = isPlayerTurn ? state.playerBoard : state.botBoard;
+      const passiveBoard = isPlayerTurn ? state.botBoard : state.playerBoard;
+      const availableColumns = getAvailableColumns(activeBoard);
       if (!availableColumns.includes(columnIndex)) {
         return;
       }
@@ -68,17 +73,21 @@ export function createGameStoreActions(params: {
       set({ interactionLocked: true });
 
       const { nextCurrentBoard, nextOpponentBoard } = applyMove({
-        currentBoard: state.playerBoard,
-        opponentBoard: state.botBoard,
+        currentBoard: activeBoard,
+        opponentBoard: passiveBoard,
         columnIndex,
         dieValue: state.currentRoll,
       });
 
+      const nextPlayerBoard = isPlayerTurn ? nextCurrentBoard : nextOpponentBoard;
+      const nextBotBoard = isPlayerTurn ? nextOpponentBoard : nextCurrentBoard;
       const scores = {
-        player: scoreBoard(nextCurrentBoard),
-        bot: scoreBoard(nextOpponentBoard),
+        player: scoreBoard(nextPlayerBoard),
+        bot: scoreBoard(nextBotBoard),
       };
-      const removedDiceCount = state.botBoard[columnIndex].length - nextOpponentBoard[columnIndex].length;
+      const removedDiceCount = isPlayerTurn
+        ? state.botBoard[columnIndex].length - nextBotBoard[columnIndex].length
+        : state.playerBoard[columnIndex].length - nextPlayerBoard[columnIndex].length;
 
       playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
       if (removedDiceCount > 0) {
@@ -86,18 +95,30 @@ export function createGameStoreActions(params: {
       }
 
       const status = getGameStatus({
-        player: nextCurrentBoard,
-        bot: nextOpponentBoard,
+        player: nextPlayerBoard,
+        bot: nextBotBoard,
       });
 
       const finished = status === GAME_STATUS.FINISHED;
+      const isPvb = state.gameMode === GAME_MODE.PVB;
+      const nextTurn = finished
+        ? state.turn
+        : isPlayerTurn
+          ? PLAYER.BOT
+          : PLAYER.PLAYER;
+      const nextPhase = finished
+        ? GAME_PHASE.FINISHED
+        : isPlayerTurn
+          ? GAME_PHASE.BOT_TURN
+          : GAME_PHASE.PLAYER_TURN;
+      const nextRoll = finished ? null : isPvb ? null : rollDie();
 
       set({
-        playerBoard: nextCurrentBoard,
-        botBoard: nextOpponentBoard,
-        currentRoll: null,
-        turn: finished ? state.turn : PLAYER.BOT,
-        phase: finished ? GAME_PHASE.FINISHED : GAME_PHASE.BOT_TURN,
+        playerBoard: nextPlayerBoard,
+        botBoard: nextBotBoard,
+        currentRoll: nextRoll,
+        turn: nextTurn,
+        phase: nextPhase,
         interactionLocked: finished,
         scores,
         status,
@@ -110,7 +131,7 @@ export function createGameStoreActions(params: {
     botMove: () => {
       const state = get();
 
-      if (state.phase !== GAME_PHASE.BOT_TURN) {
+      if (state.gameMode !== GAME_MODE.PVB || state.phase !== GAME_PHASE.BOT_TURN) {
         return;
       }
 
@@ -228,6 +249,7 @@ export function createGameStoreActions(params: {
         createInitialGameStoreState({
           botDifficulty: state.botDifficulty,
           soundEnabled: state.soundEnabled,
+          gameMode: state.gameMode,
         }),
       );
     },

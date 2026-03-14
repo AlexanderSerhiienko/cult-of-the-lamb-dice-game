@@ -1,13 +1,14 @@
 import { createInitialBoards } from "@/features/game/core/rules";
 import { GAME_PHASE, GAME_STATUS, PLAYER } from "@/features/game/core/types";
-import type { BotDifficulty } from "@/features/game/core/types";
+import type { BotDifficulty, GameMode } from "@/features/game/core/types";
 import type { GameStoreState } from "@/features/game/store/types/game-store";
 
 export function createInitialGameStoreState(params: {
   botDifficulty: BotDifficulty;
   soundEnabled: boolean;
+  gameMode: GameMode;
 }): GameStoreState {
-  const { botDifficulty, soundEnabled } = params;
+  const { botDifficulty, soundEnabled, gameMode } = params;
   const boards = createInitialBoards();
 
   return {
@@ -22,5 +23,6 @@ export function createInitialGameStoreState(params: {
     winner: null,
     botDifficulty,
     soundEnabled,
+    gameMode,
   };
 }

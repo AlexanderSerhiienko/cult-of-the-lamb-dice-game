@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { GAME_MODE } from "@/features/game/core/types";
 import { createGameStoreActions } from "@/features/game/store/actions/create-game-store-actions";
 import { createInitialGameStoreState } from "@/features/game/store/state/create-initial-game-store-state";
 import { readBotDifficulty } from "@/features/game/store/storage/bot-difficulty-storage";
@@ -9,6 +10,7 @@ export const useGameStore = create<GameStore>((set, get) => {
   const initialState = createInitialGameStoreState({
     botDifficulty: readBotDifficulty(),
     soundEnabled: readSoundEnabled(),
+    gameMode: GAME_MODE.PVB,
   });
 
   return {

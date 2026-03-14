@@ -1,13 +1,18 @@
 "use client";
 
-import { GAME_PHASE, PLAYER } from "@/features/game/core/types";
+import { GAME_MODE, GAME_PHASE, PLAYER } from "@/features/game/core/types";
+import type { GameMode } from "@/features/game/core/types";
 import { BoardsStack } from "@/features/game/components/boards-stack";
-import { GameSideRail } from "@/features/game/components/game-side-rail";
 import { GameResultModal } from "@/features/game/components/game-result-modal";
+import { GameSideRail } from "@/features/game/components/game-side-rail";
 import { useBotTurnEffect } from "@/features/game/hooks/use-bot-turn-effect";
 import { useGamePageViewModel } from "@/features/game/hooks/use-game-page-viewmodel";
 
-export default function GamePage() {
+type GamePageContentProps = {
+  mode: GameMode;
+};
+
+export function GamePageContent({ mode }: GamePageContentProps) {
   const {
     playerBoard,
     botBoard,
@@ -18,21 +23,28 @@ export default function GamePage() {
     botCurrentDie,
     resultText,
     playerAvailableColumns,
+    botAvailableColumns,
+    playerScoreLabel,
+    playerDieLabel,
+    opponentScoreLabel,
+    opponentDieLabel,
+    playerBoardTitle,
+    opponentBoardTitle,
     rematch,
     placePlayerDie,
     botMove,
   } = useGamePageViewModel();
 
-  useBotTurnEffect({ phase, botMove });
+  useBotTurnEffect({ phase, botMove, enabled: mode === GAME_MODE.PVB });
 
   return (
     <section className="h-[calc(100vh-7.5rem)]">
       <div className="grid h-full grid-cols-[220px_minmax(0,1fr)_220px] gap-5 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         <GameSideRail
-          scoreLabel="Your score"
+          scoreLabel={playerScoreLabel}
           scoreValue={scores.player}
           scoreTone={PLAYER.PLAYER}
-          dieLabel="Your die"
+          dieLabel={playerDieLabel}
           dieValue={playerCurrentDie}
           isActiveTurn={phase === GAME_PHASE.PLAYER_TURN}
         />
@@ -41,15 +53,19 @@ export default function GamePage() {
           botBoard={botBoard}
           playerBoard={playerBoard}
           phase={phase}
+          botBoardTitle={opponentBoardTitle}
+          playerBoardTitle={playerBoardTitle}
+          botAvailableColumns={botAvailableColumns}
           playerAvailableColumns={playerAvailableColumns}
           onSelectColumn={placePlayerDie}
+          botBoardSelectable={mode === GAME_MODE.LOCAL_PVP}
         />
 
         <GameSideRail
-          scoreLabel="Bot score"
+          scoreLabel={opponentScoreLabel}
           scoreValue={scores.bot}
           scoreTone={PLAYER.BOT}
-          dieLabel="Bot die"
+          dieLabel={opponentDieLabel}
           dieValue={botCurrentDie}
           isActiveTurn={phase === GAME_PHASE.BOT_TURN}
         />

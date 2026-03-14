@@ -106,8 +106,8 @@ Not in MVP:
 
 - Mobile adaptation (skipped until finsh of Phase 5)
 - ~~Sound~~
-- Settings
-- Local mode (2 players on 1 device)
+- ~~Settings~~
+- ~~Local mode (2 players on 1 device)~~
 
 ### Phase 4
 

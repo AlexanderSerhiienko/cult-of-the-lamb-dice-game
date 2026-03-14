@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BOT_DIFFICULTY, GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
+import {
+  BOT_DIFFICULTY,
+  GAME_MODE,
+  GAME_PHASE,
+  GAME_RESULT,
+  GAME_STATUS,
+  PLAYER,
+} from "@/features/game/core/types";
 import type { Board } from "@/features/game/core/types";
 import { useGameStore } from "./use-game-store";
 
@@ -11,6 +18,7 @@ function countDice(board: Board): number {
 
 describe("useGameStore", () => {
   beforeEach(() => {
+    useGameStore.getState().setGameMode(GAME_MODE.PVB);
     useGameStore.getState().resetGame();
   });
 
@@ -151,6 +159,60 @@ describe("useGameStore", () => {
     } finally {
       (globalThis as { window?: unknown }).window = originalWindow;
     }
+  });
+
+  it("updates game mode in store", () => {
+    useGameStore.getState().setGameMode(GAME_MODE.LOCAL_PVP);
+
+    const state = useGameStore.getState();
+    expect(state.gameMode).toBe(GAME_MODE.LOCAL_PVP);
+  });
+
+  it("resetGame keeps selected game mode", () => {
+    useGameStore.getState().setGameMode(GAME_MODE.LOCAL_PVP);
+    useGameStore.getState().startGame();
+    useGameStore.getState().resetGame();
+
+    const state = useGameStore.getState();
+    expect(state.gameMode).toBe(GAME_MODE.LOCAL_PVP);
+    expect(state.status).toBe(GAME_STATUS.IDLE);
+  });
+
+  it("local mode alternates turns without botMove", () => {
+    useGameStore.getState().setGameMode(GAME_MODE.LOCAL_PVP);
+    useGameStore.getState().startGame();
+
+    useGameStore.getState().placePlayerDie(0);
+    let state = useGameStore.getState();
+    expect(state.phase).toBe(GAME_PHASE.BOT_TURN);
+    expect(state.currentRoll).not.toBeNull();
+
+    const diceBeforeSecondTurn = countDice(state.botBoard);
+    useGameStore.getState().placePlayerDie(0);
+
+    state = useGameStore.getState();
+    expect(state.phase).toBe(GAME_PHASE.PLAYER_TURN);
+    expect(state.currentRoll).not.toBeNull();
+    expect(countDice(state.botBoard)).toBe(diceBeforeSecondTurn + 1);
+  });
+
+  it("ignores botMove in local mode", () => {
+    useGameStore.getState().setGameMode(GAME_MODE.LOCAL_PVP);
+    useGameStore.getState().startGame();
+    useGameStore.getState().placePlayerDie(0);
+
+    const before = useGameStore.getState();
+    const beforeBotDice = countDice(before.botBoard);
+    const beforePlayerDice = countDice(before.playerBoard);
+    const beforeRoll = before.currentRoll;
+
+    useGameStore.getState().botMove();
+
+    const after = useGameStore.getState();
+    expect(after.phase).toBe(GAME_PHASE.BOT_TURN);
+    expect(countDice(after.botBoard)).toBe(beforeBotDice);
+    expect(countDice(after.playerBoard)).toBe(beforePlayerDice);
+    expect(after.currentRoll).toBe(beforeRoll);
   });
 
 });

@@ -3,6 +3,7 @@ import type {
   BotDifficulty,
   ColumnIndex,
   DieValue,
+  GameMode,
   GamePhase,
   GameStatus,
   GameWinner,
@@ -22,10 +23,12 @@ export type GameStoreState = {
   winner: GameWinner | null;
   botDifficulty: BotDifficulty;
   soundEnabled: boolean;
+  gameMode: GameMode;
 };
 
 export type GameStoreActions = {
   startGame: () => void;
+  setGameMode: (mode: GameMode) => void;
   setBotDifficulty: (difficulty: BotDifficulty) => void;
   setSoundEnabled: (enabled: boolean) => void;
   placePlayerDie: (columnIndex: ColumnIndex) => void;

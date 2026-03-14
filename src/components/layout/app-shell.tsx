@@ -17,7 +17,7 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const isGameRoute = pathname === "/game";
+  const isGameRoute = pathname.startsWith("/game");
   const startGame = useGameStore((state) => state.startGame);
   const resetGame = useGameStore((state) => state.resetGame);
   const status = useGameStore((state) => state.status);

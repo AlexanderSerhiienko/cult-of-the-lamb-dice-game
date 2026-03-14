@@ -7,12 +7,18 @@ import type { GamePhase } from "@/features/game/core/types";
 type UseBotTurnEffectParams = {
   phase: GamePhase;
   botMove: () => void;
+  enabled?: boolean;
   delayMs?: number;
 };
 
-export function useBotTurnEffect({ phase, botMove, delayMs = 450 }: UseBotTurnEffectParams) {
+export function useBotTurnEffect({
+  phase,
+  botMove,
+  enabled = true,
+  delayMs = 450,
+}: UseBotTurnEffectParams) {
   useEffect(() => {
-    if (phase !== GAME_PHASE.BOT_TURN) {
+    if (!enabled || phase !== GAME_PHASE.BOT_TURN) {
       return;
     }
 
@@ -21,5 +27,5 @@ export function useBotTurnEffect({ phase, botMove, delayMs = 450 }: UseBotTurnEf
     }, delayMs);
 
     return () => window.clearTimeout(timeoutId);
-  }, [phase, botMove, delayMs]);
+  }, [phase, botMove, enabled, delayMs]);
 }

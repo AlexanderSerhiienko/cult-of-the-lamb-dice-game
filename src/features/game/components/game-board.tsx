@@ -15,6 +15,7 @@ type GameBoardProps = {
   board: Board;
   isActive: boolean;
   isPlayerBoard?: boolean;
+  canInteract?: boolean;
   interactiveColumns?: ColumnIndex[];
   onSelectColumn?: (columnIndex: ColumnIndex) => void;
 };
@@ -24,6 +25,7 @@ export function GameBoard({
   board,
   isActive,
   isPlayerBoard = false,
+  canInteract = false,
   interactiveColumns = [],
   onSelectColumn,
 }: GameBoardProps) {
@@ -42,7 +44,7 @@ export function GameBoard({
         {board.map((column: Board[number], index: number) => {
           const columnIndex = index as ColumnIndex;
           const canSelect =
-            Boolean(isPlayerBoard) &&
+            canInteract &&
             interactiveColumns.includes(columnIndex) &&
             typeof onSelectColumn === "function";
 
