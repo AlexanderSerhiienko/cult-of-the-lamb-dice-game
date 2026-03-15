@@ -103,8 +103,6 @@ Not in MVP:
 - ~~Advanced dice animations~~
 
 ### Phase 3
-
-- Mobile adaptation (skipped until finsh of Phase 5)
 - ~~Sound~~
 - ~~Settings~~
 - ~~Local mode (2 players on 1 device)~~
@@ -121,6 +119,7 @@ Not in MVP:
 - Matchmaking
 - Server-authoritative game logic
 - Reconnect flow
+- Mobile adaptation (skipped until finsh of Phase 5)
 
 ## How to Run
 
