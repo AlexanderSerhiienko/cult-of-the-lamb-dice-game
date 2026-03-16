@@ -24,5 +24,9 @@ export function createInitialGameStoreState(params: {
     botDifficulty,
     soundEnabled,
     gameMode,
+    matchId: null,
+    reportStatus: "idle",
+    reportedAt: null,
+    reportError: null,
   };
 }

@@ -74,9 +74,6 @@ Implemented:
 
 Not in MVP:
 
-- Auth
-- Leaderboard
-- Saved history/statistics
 - Online multiplayer
 - Mobile adaptation
 - Sound/settings depth
@@ -107,11 +104,11 @@ Not in MVP:
 - ~~Settings~~
 - ~~Local mode (2 players on 1 device)~~
 
-### Phase 4
+### ~~Phase 4~~
 
-- Auth
-- Leaderboard
-- Save statistics in database
+- ~~Auth (Google OAuth)~~
+- ~~Leaderboard~~
+- ~~Save statistics in database~~
 
 ### Phase 5
 
@@ -129,7 +126,37 @@ Not in MVP:
 npm install
 ```
 
-### 2) Start dev server
+### 2) Configure environment variables
+
+Create a local `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+- `DATABASE_URL` - Neon Postgres connection string
+- `AUTH_SECRET` - random secret used by NextAuth
+- `AUTH_GOOGLE_ID` - Google OAuth Client ID
+- `AUTH_GOOGLE_SECRET` - Google OAuth Client Secret
+- `NEXTAUTH_URL` - app URL (`http://localhost:3000` for local dev)
+
+### 3) Sync database schema
+
+For local development:
+
+```bash
+npx prisma db push
+```
+
+For migration-based workflow:
+
+```bash
+npm run prisma:migrate -- --name init
+```
+
+### 4) Start dev server
 
 ```bash
 npm run dev
@@ -137,7 +164,7 @@ npm run dev
 
 App will be available at [http://localhost:3000](http://localhost:3000).
 
-### 3) Run quality checks
+### 5) Run quality checks
 
 ```bash
 npm run test
@@ -151,4 +178,6 @@ Optional:
 npm run test:coverage
 npm run format
 npm run format:check
+npm run prisma:generate
+npm run prisma:studio
 ```

@@ -215,4 +215,56 @@ describe("useGameStore", () => {
     expect(after.currentRoll).toBe(beforeRoll);
   });
 
+  it("creates match report context on startGame", () => {
+    useGameStore.getState().startGame();
+    const state = useGameStore.getState();
+
+    expect(state.matchId).not.toBeNull();
+    expect(state.reportStatus).toBe("idle");
+    expect(state.reportedAt).toBeNull();
+    expect(state.reportError).toBeNull();
+  });
+
+  it("sets pending report status on finish in bot mode", () => {
+    useGameStore.getState().setGameMode(GAME_MODE.PVB);
+    useGameStore.getState().startGame();
+    useGameStore.setState({
+      playerBoard: [[6], [], []],
+      botBoard: [[1], [], []],
+    });
+
+    useGameStore.getState().finishGame();
+    const state = useGameStore.getState();
+
+    expect(state.phase).toBe(GAME_PHASE.FINISHED);
+    expect(state.reportStatus).toBe("pending");
+  });
+
+  it("keeps idle report status on finish in local mode", () => {
+    useGameStore.getState().setGameMode(GAME_MODE.LOCAL_PVP);
+    useGameStore.getState().startGame();
+    useGameStore.setState({
+      playerBoard: [[6], [], []],
+      botBoard: [[1], [], []],
+    });
+
+    useGameStore.getState().finishGame();
+    const state = useGameStore.getState();
+
+    expect(state.phase).toBe(GAME_PHASE.FINISHED);
+    expect(state.reportStatus).toBe("idle");
+  });
+
+  it("updates report status metadata", () => {
+    useGameStore.getState().setReportStatus("sent", {
+      reportedAt: 123,
+      reportError: null,
+    });
+    const state = useGameStore.getState();
+
+    expect(state.reportStatus).toBe("sent");
+    expect(state.reportedAt).toBe(123);
+    expect(state.reportError).toBeNull();
+  });
+
 });

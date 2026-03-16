@@ -24,6 +24,10 @@ export type GameStoreState = {
   botDifficulty: BotDifficulty;
   soundEnabled: boolean;
   gameMode: GameMode;
+  matchId: string | null;
+  reportStatus: "idle" | "pending" | "sending" | "sent" | "failed";
+  reportedAt: number | null;
+  reportError: string | null;
 };
 
 export type GameStoreActions = {
@@ -37,6 +41,13 @@ export type GameStoreActions = {
   finishGame: () => void;
   rematch: () => void;
   resetGame: () => void;
+  setReportStatus: (
+    status: GameStoreState["reportStatus"],
+    options?: {
+      reportedAt?: number | null;
+      reportError?: string | null;
+    },
+  ) => void;
 };
 
 export type GameStore = GameStoreState & GameStoreActions;

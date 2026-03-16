@@ -10,7 +10,7 @@ export default function Home() {
       <MenuActionButton href="/game/bot">New game with bot</MenuActionButton>
       <MenuActionButton href="/game/local">Local PvP</MenuActionButton>
       <MenuActionButton disabled>Online PvP (coming soon)</MenuActionButton>
-      <MenuActionButton disabled>Leaderboard (coming soon)</MenuActionButton>
+      <MenuActionButton href="/leaderboard">Leaderboard</MenuActionButton>
       <MenuActionButton disabled>Statistics (coming soon)</MenuActionButton>
       <MenuActionButton href="/settings">Settings</MenuActionButton>
     </MenuCard>

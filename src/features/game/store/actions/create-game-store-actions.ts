@@ -20,6 +20,14 @@ import type { GameStore, GameStoreActions } from "@/features/game/store/types/ga
 type SetState = StoreApi<GameStore>["setState"];
 type GetState = StoreApi<GameStore>["getState"];
 
+function createMatchId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function createGameStoreActions(params: {
   set: SetState;
   get: GetState;
@@ -39,6 +47,10 @@ export function createGameStoreActions(params: {
         scores: { player: 0, bot: 0 },
         status: GAME_STATUS.IN_PROGRESS,
         winner: null,
+        matchId: createMatchId(),
+        reportStatus: "idle",
+        reportedAt: null,
+        reportError: null,
       });
     },
     setGameMode: (mode) => {
@@ -227,6 +239,9 @@ export function createGameStoreActions(params: {
         winner,
         currentRoll: null,
         interactionLocked: true,
+        reportStatus: state.gameMode === GAME_MODE.PVB ? "pending" : "idle",
+        reportedAt: null,
+        reportError: null,
       });
     },
     rematch: () => {
@@ -241,6 +256,10 @@ export function createGameStoreActions(params: {
         scores: { player: 0, bot: 0 },
         status: GAME_STATUS.IN_PROGRESS,
         winner: null,
+        matchId: createMatchId(),
+        reportStatus: "idle",
+        reportedAt: null,
+        reportError: null,
       });
     },
     resetGame: () => {
@@ -252,6 +271,13 @@ export function createGameStoreActions(params: {
           gameMode: state.gameMode,
         }),
       );
+    },
+    setReportStatus: (status, options) => {
+      set({
+        reportStatus: status,
+        reportedAt: options?.reportedAt ?? null,
+        reportError: options?.reportError ?? null,
+      });
     },
   };
 }

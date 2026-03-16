@@ -1,0 +1,15 @@
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
+
+const isProduction = process.env.NODE_ENV === "production";
+const databaseUrl = process.env.DATABASE_URL ?? "postgresql://localhost:5432/postgres";
+if (isProduction && !process.env.DATABASE_URL) {
+  throw new Error("Missing DATABASE_URL environment variable");
+}
+
+export default defineConfig({
+  schema: "prisma/schema.prisma",
+  datasource: {
+    url: databaseUrl,
+  },
+});

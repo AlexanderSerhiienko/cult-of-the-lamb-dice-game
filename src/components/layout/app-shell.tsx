@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { AuthControls } from "@/components/auth/auth-controls";
 import { GameHeaderActions } from "@/components/layout/game-header-actions";
 import { Modal } from "@/components/ui/modal";
 import { ModalHeader } from "@/components/ui/modal-header";
@@ -38,15 +39,18 @@ export function AppShell({ children }: AppShellProps) {
       <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
           <div className="text-lg font-semibold text-slate-100">Knucklebones</div>
-          {isGameRoute ? (
-            <GameHeaderActions
-              onStartGame={startGame}
-              onResetGame={resetGame}
-              onOpenRules={() => setIsRulesOpen(true)}
-              onOpenMatchInfo={() => setIsMatchInfoOpen(true)}
-              isResetDisabled={status === GAME_STATUS.IDLE}
-            />
-          ) : null}
+          <div className="flex items-center gap-3">
+            {isGameRoute ? (
+              <GameHeaderActions
+                onStartGame={startGame}
+                onResetGame={resetGame}
+                onOpenRules={() => setIsRulesOpen(true)}
+                onOpenMatchInfo={() => setIsMatchInfoOpen(true)}
+                isResetDisabled={status === GAME_STATUS.IDLE}
+              />
+            ) : null}
+            <AuthControls />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl px-6 py-4">{children}</main>

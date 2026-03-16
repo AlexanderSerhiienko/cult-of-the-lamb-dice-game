@@ -7,6 +7,7 @@ import { GameResultModal } from "@/features/game/components/game-result-modal";
 import { GameSideRail } from "@/features/game/components/game-side-rail";
 import { useBotTurnEffect } from "@/features/game/hooks/use-bot-turn-effect";
 import { useGamePageViewModel } from "@/features/game/hooks/use-game-page-viewmodel";
+import { useMatchReportEffect } from "@/features/game/hooks/use-match-report-effect";
 
 type GamePageContentProps = {
   mode: GameMode;
@@ -36,6 +37,7 @@ export function GamePageContent({ mode }: GamePageContentProps) {
   } = useGamePageViewModel();
 
   useBotTurnEffect({ phase, botMove, enabled: mode === GAME_MODE.PVB });
+  useMatchReportEffect();
 
   return (
     <section className="h-[calc(100vh-7.5rem)]">
