@@ -1,82 +1,47 @@
 # Cult of the Lamb Dice Game (Knucklebones)
 
-A browser-based rework of my first attempt from 3 years ago.
+Browser remake of the `Knucklebones` dice duel from *Cult of the Lamb*.
 
-This project is inspired by the Knucklebones mini-game from *Cult of the Lamb* and recreates the core gameplay loop in a modern web app format.
+This project recreates the original game loop in a modern web app with bot play, local multiplayer, online private rooms, auth, leaderboard, and a separate realtime service for Socket.IO gameplay.
 
-> This is a fan project and is not affiliated with or endorsed by Massive Monster / Devolver Digital.
+> This is a fan project and is not affiliated with or endorsed by Massive Monster or Devolver Digital.
 
 ## Live Demo
 
-**Vercel:** [https://cult-of-the-lamb-dice-game.vercel.app/](https://cult-of-the-lamb-dice-game.vercel.app/)
+- Web app: [https://cult-of-the-lamb-dice-game.vercel.app/](https://cult-of-the-lamb-dice-game.vercel.app/)
 
-## What the Game Is
+## Features
 
-Knucklebones is a 1v1 dice duel:
+- Full `Knucklebones` rules and scoring
+- Bot mode with multiple difficulties
+- Local mode for 2 players on one device
+- Online private rooms with room code join flow
+- Server-authoritative realtime gameplay over Socket.IO
+- Reconnect flow with disconnect grace period
+- Google sign-in with NextAuth
+- Leaderboard and persisted match history
+- Sound and gameplay settings
 
-- each side has a `3x3` board (3 columns, height 3);
-- players take turns rolling a die (`1..6`);
-- on each turn, the rolled die is placed into any non-full column;
-- matching values in the same column index can destroy opponent dice;
-- the game ends when a board is fully filled;
-- higher total score wins.
+## Rules Summary
 
-## Core Rules
+`Knucklebones` is a `1v1` dice duel:
 
-### Turn flow
+- each player has a `3x3` board
+- players alternate turns
+- each turn rolls a die from `1..6`
+- the rolled die is placed in any non-full column
+- placing value `X` destroys opponent dice with value `X` in the matching column
+- when a board is full, the higher total score wins
 
-1. Roll a die (`1..6`)
-2. Choose an available column
-3. Place the die on your board
-4. Remove opponent dice with the same value in the matching column
-5. Recalculate scores
-6. Check endgame
-7. Pass turn
+Column score uses duplicate-based multiplication:
 
-### Column matching and destruction
-
-Columns interact by index only:
-
-- your left column affects opponent left column;
-- your middle column affects opponent middle column;
-- your right column affects opponent right column.
-
-If you place value `X`, all opponent dice with value `X` in that matching column are removed.
-
-### Scoring
-
-Total board score:
-
-`total = score(col1) + score(col2) + score(col3)`
-
-Duplicate values in one column multiply value:
-
-- if value `v` appears `n` times in a column,
-- contribution is `v * n * n`.
+- if value `v` appears `n` times in one column, that group contributes `v * n * n`
 
 Examples:
 
-- `[4, 1, 4] = 4*2*2 + 1 = 17`
-- `[6, 6] = 6*2*2 = 24`
-- `[3, 3, 3] = 3*3*3 = 27`
-- `[1, 5, 5] = 1 + 5*2*2 = 21`
-
-## Current MVP Scope
-
-Implemented:
-
-- Player vs Bot match
-- Full core rules and scoring
-- Destroy mechanics by matching column
-- Finished-state flow (win / lose / draw)
-- Rematch and reset
-- Modern UI layout and dice visuals
-
-Not in MVP:
-
-- Online multiplayer
-- Mobile adaptation
-- Sound/settings depth
+- `[4, 1, 4] = 17`
+- `[6, 6] = 24`
+- `[3, 3, 3] = 27`
 
 ## Tech Stack
 
@@ -85,51 +50,38 @@ Not in MVP:
 - TypeScript
 - Tailwind CSS
 - Zustand
+- Prisma
+- PostgreSQL
+- NextAuth
+- Socket.IO
 - Vitest
 
-## Roadmap
+## Project Status
 
-### ~~Phase 1~~
+Implemented:
 
-- ~~MVP with base rules and light design~~
+- Bot mode
+- Local multiplayer
+- Online private rooms
+- Authoritative realtime game server
+- Reconnect and leave handling
+- Auth and leaderboard
+- Match persistence and statistics
 
-### ~~Phase 2~~
+Planned next:
 
-- ~~Multiple bot difficulties~~
-- ~~Score breakdown by column~~
-- ~~Advanced dice animations~~
-
-### Phase 3
-- ~~Sound~~
-- ~~Settings~~
-- ~~Local mode (2 players on 1 device)~~
-
-### ~~Phase 4~~
-
-- ~~Auth (Google OAuth)~~
-- ~~Leaderboard~~
-- ~~Save statistics in database~~
-
-### Phase 5
-
-- Online mode
-- Server-authoritative game logic
-- Reconnect flow
-
-### Phase 6
 - Mobile adaptation
-- Matchmaking
+- Public matchmaking
 
-## How to Run
+## Local Development
 
-
-### 1) Install dependencies
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2) Configure environment variables
+### 2. Configure environment variables
 
 Create a local `.env` file:
 
@@ -137,15 +89,24 @@ Create a local `.env` file:
 cp .env.example .env
 ```
 
-Required variables:
+Required app variables:
 
-- `DATABASE_URL` - Neon Postgres connection string
+- `DATABASE_URL` - Postgres connection string
 - `AUTH_SECRET` - random secret used by NextAuth
-- `AUTH_GOOGLE_ID` - Google OAuth Client ID
-- `AUTH_GOOGLE_SECRET` - Google OAuth Client Secret
-- `NEXTAUTH_URL` - app URL (`http://localhost:3000` for local dev)
+- `AUTH_GOOGLE_ID` - Google OAuth client ID
+- `AUTH_GOOGLE_SECRET` - Google OAuth client secret
+- `NEXTAUTH_URL` - app URL, usually `http://localhost:3000`
+- `REALTIME_INTERNAL_SECRET` - shared secret used between web app and realtime service
+- `REALTIME_JWT_SECRET` - shared JWT secret for room tokens
+- `NEXT_PUBLIC_REALTIME_URL` - realtime server URL, for local dev usually `http://localhost:4001`
 
-### 3) Sync database schema
+Realtime-only variables:
+
+- `WEB_ORIGIN` - allowed web origin, usually `http://localhost:3000`
+- `WEB_API_URL` - base URL of the Next.js app, usually `http://localhost:3000`
+- `REALTIME_GRACE_PERIOD_MS` - reconnect grace period, for example `60000`
+
+### 3. Sync the database schema
 
 For local development:
 
@@ -153,21 +114,36 @@ For local development:
 npx prisma db push
 ```
 
-For migration-based workflow:
+For a migration-based workflow:
 
 ```bash
 npm run prisma:migrate -- --name init
 ```
 
-### 4) Start dev server
+### 4. Start the app
+
+Start the Next.js app:
 
 ```bash
 npm run dev
 ```
 
-App will be available at [http://localhost:3000](http://localhost:3000).
+Start the realtime server in a second terminal:
 
-### 5) Run quality checks
+```bash
+npm run realtime:dev
+```
+
+Local URLs:
+
+- web app: [http://localhost:3000](http://localhost:3000)
+- realtime server: `http://localhost:4001`
+
+If you only want bot or local mode, the realtime server is not required. For online rooms, it is required.
+
+## Quality Checks
+
+Run:
 
 ```bash
 npm run test
@@ -185,24 +161,27 @@ npm run prisma:generate
 npm run prisma:studio
 ```
 
-## Production Realtime Deploy
+## Production Deploy
 
-The web app can stay on `Vercel`, but the realtime Socket.IO server must run as a separate service.
+The app is split into two deploy targets:
 
-Vercel does not support using Functions as a WebSocket server, so deploy `realtime/src/server.mjs` separately.
+- `Vercel`: Next.js app, auth, database access, REST APIs
+- `Render`: Socket.IO realtime server
+
+### Why realtime is separate
+
+Vercel Functions are not suitable as a WebSocket server, so the Socket.IO server must run as a separate long-lived service.
 
 ### Recommended free setup
 
 - Web app: `Vercel`
-- Realtime service: `Render Web Service (Free)`
+- Realtime server: `Render Web Service (Free)`
 
-> `Render Free` is fine for testing and hobby production, but free instances can spin down after inactivity and are not ideal for latency-sensitive production traffic.
+`Render Free` is fine for hobby usage and testing, but it can spin down after inactivity.
 
-### 1) Deploy the web app on Vercel
+## Deploy the Web App on Vercel
 
-Keep the current app on Vercel as usual.
-
-Required Vercel env vars:
+Required Vercel environment variables:
 
 - `DATABASE_URL`
 - `AUTH_SECRET`
@@ -211,14 +190,20 @@ Required Vercel env vars:
 - `NEXTAUTH_URL`
 - `REALTIME_INTERNAL_SECRET`
 - `REALTIME_JWT_SECRET`
-- `NEXT_PUBLIC_REALTIME_URL` - set this after the realtime service is created
+- `NEXT_PUBLIC_REALTIME_URL`
 
-### 2) Deploy the realtime service on Render
+Important:
 
-1. Open `https://dashboard.render.com/`
+- `REALTIME_INTERNAL_SECRET` must exactly match the value on Render
+- `REALTIME_JWT_SECRET` must exactly match the value on Render
+- `NEXT_PUBLIC_REALTIME_URL` should be the Render HTTPS URL, for example `https://cult-of-the-lamb-realtime.onrender.com`
+
+## Deploy the Realtime Server on Render
+
+1. Open [https://dashboard.render.com/](https://dashboard.render.com/)
 2. Click `New +`
 3. Click `Web Service`
-4. Connect your GitHub repo
+4. Connect GitHub
 5. Select this repository
 
 Use these settings:
@@ -230,7 +215,7 @@ Use these settings:
 - `Start Command`: `npm run realtime:start`
 - `Instance Type`: `Free`
 
-Set these Render env vars:
+Render environment variables:
 
 - `NODE_ENV=production`
 - `SKIP_PRISMA_GENERATE=1`
@@ -240,55 +225,37 @@ Set these Render env vars:
 - `REALTIME_JWT_SECRET=<same value as on Vercel>`
 - `REALTIME_GRACE_PERIOD_MS=60000`
 
-You do **not** need to set `PORT` manually on Render. Render provides it automatically.
+Notes:
 
-You also do **not** need `DATABASE_URL` on the realtime service, because Prisma generation is skipped there.
+- Do not set `PORT` manually on Render
+- The realtime service does not need `DATABASE_URL`
+- `SKIP_PRISMA_GENERATE=1` is required so the realtime service can install dependencies without Prisma setup
 
-### 3) Connect Vercel to the realtime service
-
-After Render finishes deploy, copy the realtime URL, for example:
-
-`https://cult-of-the-lamb-realtime.onrender.com`
-
-Then go to your Vercel project:
-
-1. Open `https://vercel.com/dashboard`
-2. Open your project
-3. Go to `Settings -> Environment Variables`
-4. Set:
-
-`NEXT_PUBLIC_REALTIME_URL=https://cult-of-the-lamb-realtime.onrender.com`
-
-Redeploy the Vercel app after saving this variable.
-
-### 4) Optional: use a custom domain
-
-Recommended:
-
-- web app: `https://yourdomain.com`
-- realtime: `https://rt.yourdomain.com`
-
-If you add a custom domain for realtime on Render, update:
-
-- `NEXT_PUBLIC_REALTIME_URL`
-- `WEB_ORIGIN`
-- `WEB_API_URL`
-
-### 5) Final production checklist
+## Production Checklist
 
 After both deploys are live, verify:
 
-- Create room
-- Join room by code
-- Start match
-- Both players connect to realtime
-- Moves apply and persist correctly
-- Close one tab and confirm the other player sees the `60s` reconnect state
-- Reopen the app and confirm the reconnect action is visible on the home page
-- Reconnect before timeout and continue playing
-- Leave intentionally and confirm instant win for the opponent
+- create room
+- join room by code
+- start match
+- both players connect to realtime
+- moves apply and persist correctly
+- closing one tab shows the disconnect grace state to the other player
+- reopening the app shows the reconnect action
+- reconnecting before timeout restores the match
+- intentional leave gives the opponent an immediate win
 
-### Summary of what runs where
+## Scripts
 
-- `Vercel`: Next.js app, database access, auth, REST APIs
-- `Render`: Socket.IO realtime server only
+- `npm run dev` - start Next.js in development
+- `npm run realtime:dev` - start the realtime server locally
+- `npm run realtime:start` - start the realtime server in production mode
+- `npm run test` - run tests
+- `npm run lint` - run ESLint
+- `npm run build` - generate Prisma client and build the Next.js app
+
+## Notes
+
+- The web app signs realtime room tokens, and the realtime service validates them
+- If realtime connection fails with `invalid signature`, check that `REALTIME_JWT_SECRET` matches on Vercel and Render
+- If internal realtime persistence fails, check that `REALTIME_INTERNAL_SECRET` matches on Vercel and Render
