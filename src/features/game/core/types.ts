@@ -57,6 +57,7 @@ export type BotDifficulty = (typeof BOT_DIFFICULTY)[keyof typeof BOT_DIFFICULTY]
 export const GAME_MODE = {
   PVB: "pvb",
   LOCAL_PVP: "local_pvp",
+  ONLINE_PRIVATE: "online_private",
 } as const;
 
 export type GameMode = (typeof GAME_MODE)[keyof typeof GAME_MODE];

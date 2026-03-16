@@ -28,5 +28,12 @@ export function createInitialGameStoreState(params: {
     reportStatus: "idle",
     reportedAt: null,
     reportError: null,
+    onlineRoomId: null,
+    onlineMySeat: null,
+    onlineTurnUserId: null,
+    onlineRevision: 0,
+    onlineConnected: false,
+    onlineLastSyncAt: null,
+    onlineError: null,
   };
 }

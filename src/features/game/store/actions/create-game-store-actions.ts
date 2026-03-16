@@ -66,6 +66,10 @@ export function createGameStoreActions(params: {
     },
     placePlayerDie: (columnIndex) => {
       const state = get();
+      if (state.gameMode === GAME_MODE.ONLINE_PRIVATE) {
+        return;
+      }
+
       const isPlayerTurn = state.phase === GAME_PHASE.PLAYER_TURN;
       const isLocalOpponentTurn =
         state.gameMode === GAME_MODE.LOCAL_PVP && state.phase === GAME_PHASE.BOT_TURN;
@@ -277,6 +281,49 @@ export function createGameStoreActions(params: {
         reportStatus: status,
         reportedAt: options?.reportedAt ?? null,
         reportError: options?.reportError ?? null,
+      });
+    },
+    setOnlineSession: ({ roomId, seat }) => {
+      set({
+        onlineRoomId: roomId,
+        onlineMySeat: seat,
+        onlineError: null,
+      });
+    },
+    setOnlineConnectionState: (connected) => {
+      set({
+        onlineConnected: connected,
+      });
+    },
+    applyOnlineServerState: (params) => {
+      const state = get();
+      set({
+        playerBoard: params.playerBoard,
+        botBoard: params.botBoard,
+        currentRoll: params.currentRoll,
+        phase: params.phase,
+        scores: params.scores,
+        winner: params.winner,
+        status: params.phase === GAME_PHASE.FINISHED ? GAME_STATUS.FINISHED : GAME_STATUS.IN_PROGRESS,
+        interactionLocked: params.phase === GAME_PHASE.FINISHED,
+        onlineRevision: params.revision,
+        onlineTurnUserId: params.turnUserId,
+        onlineLastSyncAt: Date.now(),
+        reportStatus:
+          params.phase === GAME_PHASE.FINISHED && state.gameMode === GAME_MODE.ONLINE_PRIVATE
+            ? "pending"
+            : state.reportStatus,
+      });
+    },
+    clearOnlineSession: () => {
+      set({
+        onlineRoomId: null,
+        onlineMySeat: null,
+        onlineTurnUserId: null,
+        onlineRevision: 0,
+        onlineConnected: false,
+        onlineLastSyncAt: null,
+        onlineError: null,
       });
     },
   };

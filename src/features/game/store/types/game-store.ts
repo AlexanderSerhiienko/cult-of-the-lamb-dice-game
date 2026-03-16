@@ -28,6 +28,13 @@ export type GameStoreState = {
   reportStatus: "idle" | "pending" | "sending" | "sent" | "failed";
   reportedAt: number | null;
   reportError: string | null;
+  onlineRoomId: string | null;
+  onlineMySeat: 1 | 2 | null;
+  onlineTurnUserId: string | null;
+  onlineRevision: number;
+  onlineConnected: boolean;
+  onlineLastSyncAt: number | null;
+  onlineError: string | null;
 };
 
 export type GameStoreActions = {
@@ -48,6 +55,19 @@ export type GameStoreActions = {
       reportError?: string | null;
     },
   ) => void;
+  setOnlineSession: (params: { roomId: string; seat: 1 | 2 | null }) => void;
+  setOnlineConnectionState: (connected: boolean) => void;
+  applyOnlineServerState: (params: {
+    playerBoard: Board;
+    botBoard: Board;
+    currentRoll: DieValue | null;
+    phase: GamePhase;
+    scores: PlayerScores;
+    winner: GameWinner | null;
+    revision: number;
+    turnUserId: string | null;
+  }) => void;
+  clearOnlineSession: () => void;
 };
 
 export type GameStore = GameStoreState & GameStoreActions;

@@ -22,6 +22,39 @@ enum MatchOutcome {
   DRAW
 }
 
+enum RoomVisibility {
+  PRIVATE
+}
+
+enum RoomStatus {
+  WAITING
+  IN_GAME
+  CLOSED
+}
+
+enum RoomMemberRole {
+  HOST
+  PLAYER
+}
+
+enum GameMatchStatus {
+  PENDING
+  ACTIVE
+  FINISHED
+  CANCELLED
+}
+
+enum GameMatchEventType {
+  MATCH_CREATED
+  MATCH_STARTED
+  DICE_ROLLED
+  MOVE_SUBMITTED
+  MOVE_APPLIED
+  MATCH_FINISHED
+  PLAYER_DISCONNECTED
+  PLAYER_RECONNECTED
+}
+
 model User {
   id            String        @id @default(cuid())
   name          String?
@@ -32,6 +65,11 @@ model User {
   accounts      Account[]
   sessions      Session[]
   matchResults  MatchResult[]
+  hostedRooms   Room[]               @relation("RoomHost")
+  roomMemberships RoomMember[]
+  gameMatchParticipants GameMatchParticipant[]
+  gameMatchEvents GameMatchEvent[]   @relation("EventActor")
+  wonGameMatches GameMatch[]         @relation("GameMatchWinner")
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -82,4 +120,92 @@ model MatchResult {
   @@index([userId, createdAt])
   @@index([mode, createdAt])
   @@unique([userId, externalMatchId])
+}
+
+model Room {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  visibility     RoomVisibility @default(PRIVATE)
+  status         RoomStatus     @default(WAITING)
+  hostId         String
+  host           User           @relation("RoomHost", fields: [hostId], references: [id], onDelete: Restrict)
+  currentMatchId String?        @unique
+  currentMatch   GameMatch?     @relation("RoomCurrentMatch", fields: [currentMatchId], references: [id], onDelete: SetNull)
+  members        RoomMember[]
+  matches        GameMatch[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  closedAt       DateTime?
+
+  @@index([hostId, createdAt])
+  @@index([status, createdAt])
+}
+
+model RoomMember {
+  id        String         @id @default(cuid())
+  roomId    String
+  room      Room           @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      RoomMemberRole @default(PLAYER)
+  joinedAt  DateTime       @default(now())
+  leftAt    DateTime?
+  lastSeenAt DateTime      @default(now())
+
+  @@unique([roomId, userId])
+  @@index([userId, joinedAt])
+  @@index([roomId, role])
+}
+
+model GameMatch {
+  id             String             @id @default(cuid())
+  roomId         String?
+  room           Room?              @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  roomCurrentFor Room?              @relation("RoomCurrentMatch")
+  status         GameMatchStatus    @default(PENDING)
+  startedAt      DateTime?
+  endedAt        DateTime?
+  winnerUserId   String?
+  winner         User?              @relation("GameMatchWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  revision       Int                @default(0)
+  phase          String             @default("idle")
+  currentRoll    Int?
+  snapshot       Json?
+  participants   GameMatchParticipant[]
+  events         GameMatchEvent[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([roomId, createdAt])
+  @@index([status, createdAt])
+}
+
+model GameMatchParticipant {
+  id         String       @id @default(cuid())
+  matchId    String
+  match      GameMatch    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seat       Int
+  finalScore Int?
+  outcome    MatchOutcome?
+  joinedAt   DateTime     @default(now())
+
+  @@unique([matchId, userId])
+  @@unique([matchId, seat])
+}
+
+model GameMatchEvent {
+  id          String             @id @default(cuid())
+  matchId     String
+  match       GameMatch          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  seq         Int
+  eventType   GameMatchEventType
+  actorUserId String?
+  actor       User?              @relation("EventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  payload     Json
+  createdAt   DateTime           @default(now())
+
+  @@unique([matchId, seq])
+  @@index([matchId, createdAt])
 }

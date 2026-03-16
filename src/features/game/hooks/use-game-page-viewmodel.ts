@@ -60,6 +60,17 @@ function getLabels(gameMode: GameMode) {
     };
   }
 
+  if (gameMode === GAME_MODE.ONLINE_PRIVATE) {
+    return {
+      playerScoreLabel: "Your score",
+      playerDieLabel: "Your die",
+      opponentScoreLabel: "Opponent score",
+      opponentDieLabel: "Opponent die",
+      playerBoardTitle: "Your board",
+      opponentBoardTitle: "Opponent board",
+    };
+  }
+
   return {
     playerScoreLabel: "Your score",
     playerDieLabel: "Your die",

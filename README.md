@@ -113,12 +113,15 @@ Not in MVP:
 ### Phase 5
 
 - Online mode
-- Matchmaking
 - Server-authoritative game logic
 - Reconnect flow
-- Mobile adaptation (skipped until finsh of Phase 5)
+
+### Phase 6
+- Mobile adaptation
+- Matchmaking
 
 ## How to Run
+
 
 ### 1) Install dependencies
 
