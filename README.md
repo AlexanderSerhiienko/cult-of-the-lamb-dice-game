@@ -184,3 +184,111 @@ npm run format:check
 npm run prisma:generate
 npm run prisma:studio
 ```
+
+## Production Realtime Deploy
+
+The web app can stay on `Vercel`, but the realtime Socket.IO server must run as a separate service.
+
+Vercel does not support using Functions as a WebSocket server, so deploy `realtime/src/server.mjs` separately.
+
+### Recommended free setup
+
+- Web app: `Vercel`
+- Realtime service: `Render Web Service (Free)`
+
+> `Render Free` is fine for testing and hobby production, but free instances can spin down after inactivity and are not ideal for latency-sensitive production traffic.
+
+### 1) Deploy the web app on Vercel
+
+Keep the current app on Vercel as usual.
+
+Required Vercel env vars:
+
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+- `NEXTAUTH_URL`
+- `REALTIME_INTERNAL_SECRET`
+- `REALTIME_JWT_SECRET`
+- `NEXT_PUBLIC_REALTIME_URL` - set this after the realtime service is created
+
+### 2) Deploy the realtime service on Render
+
+1. Open `https://dashboard.render.com/`
+2. Click `New +`
+3. Click `Web Service`
+4. Connect your GitHub repo
+5. Select this repository
+
+Use these settings:
+
+- `Name`: `cult-of-the-lamb-realtime`
+- `Runtime`: `Node`
+- `Branch`: your production branch
+- `Build Command`: `npm install`
+- `Start Command`: `npm run realtime:start`
+- `Instance Type`: `Free`
+
+Set these Render env vars:
+
+- `NODE_ENV=production`
+- `SKIP_PRISMA_GENERATE=1`
+- `WEB_ORIGIN=https://your-vercel-app-domain.vercel.app`
+- `WEB_API_URL=https://your-vercel-app-domain.vercel.app`
+- `REALTIME_INTERNAL_SECRET=<same value as on Vercel>`
+- `REALTIME_JWT_SECRET=<same value as on Vercel>`
+- `REALTIME_GRACE_PERIOD_MS=60000`
+
+You do **not** need to set `PORT` manually on Render. Render provides it automatically.
+
+You also do **not** need `DATABASE_URL` on the realtime service, because Prisma generation is skipped there.
+
+### 3) Connect Vercel to the realtime service
+
+After Render finishes deploy, copy the realtime URL, for example:
+
+`https://cult-of-the-lamb-realtime.onrender.com`
+
+Then go to your Vercel project:
+
+1. Open `https://vercel.com/dashboard`
+2. Open your project
+3. Go to `Settings -> Environment Variables`
+4. Set:
+
+`NEXT_PUBLIC_REALTIME_URL=https://cult-of-the-lamb-realtime.onrender.com`
+
+Redeploy the Vercel app after saving this variable.
+
+### 4) Optional: use a custom domain
+
+Recommended:
+
+- web app: `https://yourdomain.com`
+- realtime: `https://rt.yourdomain.com`
+
+If you add a custom domain for realtime on Render, update:
+
+- `NEXT_PUBLIC_REALTIME_URL`
+- `WEB_ORIGIN`
+- `WEB_API_URL`
+
+### 5) Final production checklist
+
+After both deploys are live, verify:
+
+- Create room
+- Join room by code
+- Start match
+- Both players connect to realtime
+- Moves apply and persist correctly
+- Close one tab and confirm the other player sees the `60s` reconnect state
+- Reopen the app and confirm the reconnect action is visible on the home page
+- Reconnect before timeout and continue playing
+- Leave intentionally and confirm instant win for the opponent
+
+### Summary of what runs where
+
+- `Vercel`: Next.js app, database access, auth, REST APIs
+- `Render`: Socket.IO realtime server only

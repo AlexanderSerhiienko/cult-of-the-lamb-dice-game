@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev --webpack",
     "realtime:dev": "node realtime/src/server.mjs",
+    "realtime:start": "node realtime/src/server.mjs",
     "build": "npm run prisma:generate && next build",
     "start": "next start",
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/postinstall.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
