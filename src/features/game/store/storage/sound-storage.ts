@@ -1,11 +1,25 @@
 const SOUND_ENABLED_STORAGE_KEY = "knucklebones.soundEnabled";
 
+function getStorage(): Storage | null {
+  if (
+    typeof window === "undefined" ||
+    typeof window.localStorage === "undefined" ||
+    typeof window.localStorage.getItem !== "function" ||
+    typeof window.localStorage.setItem !== "function"
+  ) {
+    return null;
+  }
+
+  return window.localStorage;
+}
+
 export function readSoundEnabled(): boolean {
-  if (typeof window === "undefined") {
+  const storage = getStorage();
+  if (!storage) {
     return true;
   }
 
-  const raw = window.localStorage.getItem(SOUND_ENABLED_STORAGE_KEY);
+  const raw = storage.getItem(SOUND_ENABLED_STORAGE_KEY);
   if (raw === null) {
     return true;
   }
@@ -14,9 +28,10 @@ export function readSoundEnabled(): boolean {
 }
 
 export function writeSoundEnabled(enabled: boolean): void {
-  if (typeof window === "undefined") {
+  const storage = getStorage();
+  if (!storage) {
     return;
   }
 
-  window.localStorage.setItem(SOUND_ENABLED_STORAGE_KEY, String(enabled));
+  storage.setItem(SOUND_ENABLED_STORAGE_KEY, String(enabled));
 }

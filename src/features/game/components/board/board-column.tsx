@@ -13,6 +13,7 @@ function getColumnButtonClass(canSelect: boolean) {
 
 type BoardColumnProps = {
   columnIndex: ColumnIndex;
+  boardTitle: string;
   column: Board[number];
   isPlayerBoard: boolean;
   canSelect: boolean;
@@ -26,6 +27,7 @@ type BoardColumnProps = {
 
 export function BoardColumn({
   columnIndex,
+  boardTitle,
   column,
   isPlayerBoard,
   canSelect,
@@ -48,6 +50,7 @@ export function BoardColumn({
       type="button"
       onClick={() => onSelectColumn?.(columnIndex)}
       disabled={!canSelect}
+      aria-label={`${boardTitle} column ${columnIndex + 1}`}
       className={`flex w-[5.5rem] flex-col gap-2 rounded-lg border p-2 text-left transition focus-visible:outline-none md:w-[6.25rem] ${getColumnButtonClass(canSelect)}`}
     >
       <ColumnScoreBadge key={`${columnIndex}-${columnScore}`} score={columnScore} />

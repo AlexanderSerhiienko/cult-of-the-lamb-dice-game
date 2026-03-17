@@ -6,12 +6,12 @@ import {
   determineResult,
   getAvailableColumns,
   getGameStatus,
-  rollDie,
   scoreBoard,
 } from "@/features/game/core/rules";
 import { GAME_MODE, GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
 import type { GameWinner } from "@/features/game/core/types";
 import { GAME_SFX_EVENT, playGameSfx } from "@/features/game/sound/game-sfx";
+import type { GameStoreDependencies } from "@/features/game/store/game-store-deps";
 import { createInitialGameStoreState } from "@/features/game/store/state/create-initial-game-store-state";
 import { writeBotDifficulty } from "@/features/game/store/storage/bot-difficulty-storage";
 import { writeSoundEnabled } from "@/features/game/store/storage/sound-storage";
@@ -19,14 +19,6 @@ import type { GameStore, GameStoreActions } from "@/features/game/store/types/ga
 
 type SetState = StoreApi<GameStore>["setState"];
 type GetState = StoreApi<GameStore>["getState"];
-
-function createMatchId(): string {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 function createSeatBoardState(params: {
   seat1Board: GameStore["seat1Board"];
@@ -47,8 +39,9 @@ function createSeatScoreState(seatScores: GameStore["seatScores"]) {
 export function createGameStoreActions(params: {
   set: SetState;
   get: GetState;
+  deps: GameStoreDependencies;
 }): GameStoreActions {
-  const { set, get } = params;
+  const { set, get, deps } = params;
 
   return {
     startGame: () => {
@@ -58,14 +51,14 @@ export function createGameStoreActions(params: {
           seat1Board: boards.player,
           seat2Board: boards.bot,
         }),
-        currentRoll: rollDie(),
+        currentRoll: deps.diceSource.getNextRoll(),
         turn: PLAYER.PLAYER,
         phase: GAME_PHASE.PLAYER_TURN,
         interactionLocked: false,
         ...createSeatScoreState({ seat1: 0, seat2: 0 }),
         status: GAME_STATUS.IN_PROGRESS,
         winner: null,
-        matchId: createMatchId(),
+        matchId: deps.createMatchId(),
         reportStatus: "idle",
         reportedAt: null,
         reportError: null,
@@ -145,7 +138,7 @@ export function createGameStoreActions(params: {
         : isPlayerTurn
           ? GAME_PHASE.BOT_TURN
           : GAME_PHASE.PLAYER_TURN;
-      const nextRoll = finished ? null : isPvb ? null : rollDie();
+      const nextRoll = finished ? null : isPvb ? null : deps.diceSource.getNextRoll();
 
       set({
         ...createSeatBoardState({
@@ -177,7 +170,7 @@ export function createGameStoreActions(params: {
         return;
       }
 
-      const roll = rollDie();
+      const roll = deps.diceSource.getNextRoll();
       const botColumn = chooseBotColumn({
         playerBoard: state.seat1Board,
         botBoard: state.seat2Board,
@@ -215,7 +208,7 @@ export function createGameStoreActions(params: {
           seat1Board: nextOpponentBoard,
           seat2Board: nextCurrentBoard,
         }),
-        currentRoll: finished ? null : rollDie(),
+        currentRoll: finished ? null : deps.diceSource.getNextRoll(),
         turn: finished ? state.turn : PLAYER.PLAYER,
         phase: finished ? GAME_PHASE.FINISHED : GAME_PHASE.PLAYER_TURN,
         interactionLocked: finished,
@@ -277,14 +270,14 @@ export function createGameStoreActions(params: {
           seat1Board: boards.player,
           seat2Board: boards.bot,
         }),
-        currentRoll: rollDie(),
+        currentRoll: deps.diceSource.getNextRoll(),
         turn: PLAYER.PLAYER,
         phase: GAME_PHASE.PLAYER_TURN,
         interactionLocked: false,
         ...createSeatScoreState({ seat1: 0, seat2: 0 }),
         status: GAME_STATUS.IN_PROGRESS,
         winner: null,
-        matchId: createMatchId(),
+        matchId: deps.createMatchId(),
         reportStatus: "idle",
         reportedAt: null,
         reportError: null,

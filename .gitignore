@@ -12,6 +12,11 @@
 
 # testing
 /coverage
+/.vitest-localstorage
+/.vitest-localstorage-shm
+/.vitest-localstorage-wal
+/playwright-report
+/test-results
 
 # next.js
 /.next/

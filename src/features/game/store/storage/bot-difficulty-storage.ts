@@ -11,12 +11,26 @@ function isBotDifficulty(value: string): value is BotDifficulty {
   );
 }
 
+function getStorage(): Storage | null {
+  if (
+    typeof window === "undefined" ||
+    typeof window.localStorage === "undefined" ||
+    typeof window.localStorage.getItem !== "function" ||
+    typeof window.localStorage.setItem !== "function"
+  ) {
+    return null;
+  }
+
+  return window.localStorage;
+}
+
 export function readBotDifficulty(): BotDifficulty {
-  if (typeof window === "undefined") {
+  const storage = getStorage();
+  if (!storage) {
     return BOT_DIFFICULTY.MEDIUM;
   }
 
-  const raw = window.localStorage.getItem(BOT_DIFFICULTY_STORAGE_KEY);
+  const raw = storage.getItem(BOT_DIFFICULTY_STORAGE_KEY);
   if (raw && isBotDifficulty(raw)) {
     return raw;
   }
@@ -25,9 +39,10 @@ export function readBotDifficulty(): BotDifficulty {
 }
 
 export function writeBotDifficulty(difficulty: BotDifficulty): void {
-  if (typeof window === "undefined") {
+  const storage = getStorage();
+  if (!storage) {
     return;
   }
 
-  window.localStorage.setItem(BOT_DIFFICULTY_STORAGE_KEY, difficulty);
+  storage.setItem(BOT_DIFFICULTY_STORAGE_KEY, difficulty);
 }

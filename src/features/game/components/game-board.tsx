@@ -52,6 +52,7 @@ export function GameBoard({
             <BoardColumn
               key={columnIndex}
               columnIndex={columnIndex}
+              boardTitle={title}
               column={column}
               isPlayerBoard={isPlayerBoard}
               canSelect={canSelect}
