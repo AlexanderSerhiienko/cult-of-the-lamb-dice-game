@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,6 +13,7 @@ export default function OnlineRoomLobbyPage() {
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const hasNavigatedToMatchRef = useRef(false);
   const roomId = params.roomId;
 
@@ -95,6 +95,22 @@ export default function OnlineRoomLobbyPage() {
     }
   }
 
+  async function handleCopyCode() {
+    if (!room) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(room.room.code);
+      setCopyState("copied");
+      window.setTimeout(() => {
+        setCopyState("idle");
+      }, 1500);
+    } catch {
+      setCopyState("failed");
+    }
+  }
+
   if (status !== "authenticated") {
     return (
       <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
@@ -114,8 +130,20 @@ export default function OnlineRoomLobbyPage() {
 
   return (
     <section className="mx-auto max-w-2xl rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-      <h1 className="text-xl font-semibold text-slate-100">Room {room.room.code}</h1>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-xl font-semibold text-slate-100">Room {room.room.code}</h1>
+        <button
+          type="button"
+          onClick={handleCopyCode}
+          className="rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:bg-slate-900"
+        >
+          {copyState === "copied" ? "Copied" : "Copy code"}
+        </button>
+      </div>
       <p className="mt-2 text-sm text-slate-400">Share this code to invite another player.</p>
+      {copyState === "failed" ? (
+        <p className="mt-2 text-sm text-rose-300">Could not copy room code. Please copy it manually.</p>
+      ) : null}
       {isMatchStarting ? (
         <p className="mt-3 text-sm font-medium text-cyan-300">Match is starting. Connecting both players...</p>
       ) : null}
@@ -145,12 +173,6 @@ export default function OnlineRoomLobbyPage() {
         >
           {isLeaving ? "Leaving..." : "Leave room"}
         </button>
-        <Link
-          href="/online"
-          className="rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition active:scale-[0.98] active:bg-slate-900"
-        >
-          Back
-        </Link>
       </div>
 
       {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}

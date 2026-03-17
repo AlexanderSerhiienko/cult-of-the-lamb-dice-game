@@ -89,6 +89,7 @@ describe("OnlineRoomLobbyPage", () => {
     expect(screen.getByText("Alex (host)")).toBeInTheDocument();
     expect(screen.getByText("Sam")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start match" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Copy code" })).toBeInTheDocument();
   });
 
   it("keeps start disabled for a non-host player", async () => {
@@ -179,5 +180,33 @@ describe("OnlineRoomLobbyPage", () => {
     await user.click(screen.getByRole("button", { name: "Start match" }));
 
     expect(await screen.findByText("Cannot start yet")).toBeInTheDocument();
+  });
+
+  it("copies the room code to the clipboard", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    mockFetchRoom.mockResolvedValue(createRoomSnapshot());
+
+    const { user } = renderWithProviders(<OnlineRoomLobbyPage />, {
+      pathname: "/online/room/room-1",
+      params: { roomId: "room-1" },
+      session: {
+        status: "authenticated",
+        data: {
+          expires: "2099-01-01T00:00:00.000Z",
+          user: { id: "user-1", name: "Alex", email: "alex@example.com" },
+        },
+      },
+    });
+
+    expect(await screen.findByRole("button", { name: "Copy code" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Copy code" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
+    });
   });
 });

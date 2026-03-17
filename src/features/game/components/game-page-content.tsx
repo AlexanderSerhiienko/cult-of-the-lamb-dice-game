@@ -81,6 +81,8 @@ export function GamePageContent({ mode }: GamePageContentProps) {
           botScore={seatScores.seat2}
           onRematch={rematch}
           onClose={rematch}
+          secondaryActionLabel="Back to menu"
+          secondaryActionHref="/"
         />
       ) : null}
     </section>

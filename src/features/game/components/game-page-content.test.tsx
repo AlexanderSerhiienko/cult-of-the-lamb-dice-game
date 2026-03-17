@@ -100,6 +100,7 @@ describe("GamePageContent", () => {
     await waitFor(() => {
       expect(screen.getByText("Player 1 wins")).toBeInTheDocument();
       expect(screen.getByText(/Final score:/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Back to menu" })).toHaveAttribute("href", "/");
     });
   });
 
