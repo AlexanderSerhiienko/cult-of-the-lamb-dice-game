@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn, signOut, useSession } from "next-auth/react";
+import { ActionButton } from "@/components/ui/action-button";
 
 export function AuthControls() {
   const { data: session, status } = useSession();
@@ -15,13 +16,14 @@ export function AuthControls() {
 
   if (!session?.user) {
     return (
-      <button
-        type="button"
+      <ActionButton
         onClick={() => signIn("google")}
-        className="rounded-full border border-emerald-500/60 bg-emerald-500/15 px-3.5 py-1.5 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/25"
+        variant="authPrimary"
+        size="sm"
+        shape="full"
       >
         Sign in with Google
-      </button>
+      </ActionButton>
     );
   }
 
@@ -30,13 +32,14 @@ export function AuthControls() {
       <span className="max-w-[12rem] truncate px-1 text-xs text-slate-300">
         {session.user.name ?? session.user.email}
       </span>
-      <button
-        type="button"
+      <ActionButton
         onClick={() => signOut()}
-        className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-800"
+        variant="authSecondary"
+        size="sm"
+        shape="full"
       >
         Sign out
-      </button>
+      </ActionButton>
     </div>
   );
 }

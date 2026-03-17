@@ -16,6 +16,9 @@ type OnlineGameContentProps = {
   onSelectColumn: (column: 0 | 1 | 2) => void;
   statusBanner?: ReactNode;
   interactionBlocked?: boolean;
+  backToHref?: string;
+  leaveRoomOnExit?: boolean;
+  resultDetails?: ReactNode;
 };
 
 function getSeatPerspective(params: {
@@ -80,6 +83,9 @@ export function OnlineGameContent({
   onSelectColumn,
   statusBanner,
   interactionBlocked = false,
+  backToHref = "/",
+  leaveRoomOnExit = true,
+  resultDetails,
 }: OnlineGameContentProps) {
   const router = useRouter();
   const phase = useGameStore((state) => state.phase);
@@ -110,10 +116,10 @@ export function OnlineGameContent({
   const showOpponentDie = !isMyTurn && phase === GAME_PHASE.PLAYER_TURN;
 
   async function handleBackToMenu() {
-    if (onlineRoomId) {
+    if (leaveRoomOnExit && onlineRoomId) {
       await leaveRoom(onlineRoomId).catch(() => undefined);
     }
-    router.push("/");
+    router.push(backToHref);
   }
 
   return (
@@ -164,6 +170,7 @@ export function OnlineGameContent({
           onRematch={handleBackToMenu}
           onClose={() => undefined}
           actionLabel="Back to menu"
+          details={resultDetails}
         />
       ) : null}
     </section>

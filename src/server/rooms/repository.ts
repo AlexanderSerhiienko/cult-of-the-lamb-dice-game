@@ -1,4 +1,12 @@
-import { GameMatchEventType, GameMatchStatus, Prisma, RoomMemberRole, RoomStatus, RoomVisibility } from "@prisma/client";
+import {
+  GameMatchEndReason,
+  GameMatchEventType,
+  GameMatchStatus,
+  Prisma,
+  RoomMemberRole,
+  RoomStatus,
+  RoomVisibility,
+} from "@prisma/client";
 import { prisma } from "@/server/db/prisma";
 import type { RoomSnapshot } from "@/server/rooms/types";
 
@@ -215,6 +223,7 @@ export async function updateMatchSnapshot(params: {
   actorUserId: string | null;
   finish?: {
     winnerUserId: string | null;
+    endedBy?: GameMatchEndReason;
   };
 }): Promise<void> {
   const { matchId, revision, phase, currentRoll, snapshot, actorUserId, finish } = params;
@@ -230,6 +239,7 @@ export async function updateMatchSnapshot(params: {
       status: finish ? GameMatchStatus.FINISHED : undefined,
       endedAt: finish ? new Date() : undefined,
       winnerUserId: finish?.winnerUserId ?? undefined,
+      endedBy: finish?.endedBy ?? undefined,
       events: finish
         ? {
             create: {

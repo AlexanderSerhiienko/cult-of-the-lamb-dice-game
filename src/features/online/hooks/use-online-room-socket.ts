@@ -7,6 +7,8 @@ import {
   ONLINE_SOCKET_EVENT,
   type MatchFinishedEvent,
   type SyncResponseEvent,
+  type TurnTimeoutAppliedEvent,
+  type TurnTimerUpdatedEvent,
 } from "@/features/online/socket-events";
 import { useOnlineMoveSubmission } from "@/features/online/hooks/use-online-move-submission";
 import { useOpponentConnectionState } from "@/features/online/hooks/use-opponent-connection-state";
@@ -34,6 +36,13 @@ export function useOnlineRoomSocket({
   const mySeat = useGameStore((state) => state.onlineMySeat);
   const setGameMode = useGameStore((state) => state.setGameMode);
   const [error, setError] = useState<string | null>(null);
+  const [turnDeadlineMs, setTurnDeadlineMs] = useState<number | null>(null);
+  const [matchEndedBy, setMatchEndedBy] = useState<MatchFinishedEvent["endedBy"] | null>(null);
+  const [timeoutNotice, setTimeoutNotice] = useState<{
+    userId: string;
+    strikeCount: number;
+    strikeLimit: number;
+  } | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const snapshotRef = useRef<OnlineSnapshot | null>(null);
   const {
@@ -76,10 +85,31 @@ export function useOnlineRoomSocket({
       const seat = getOnlineSeat(snapshot, userId);
       setOnlineSession({ roomId, seat });
       commitSnapshot(snapshot);
+      setTurnDeadlineMs(snapshot.turnDeadlineMs ?? null);
+      setMatchEndedBy(null);
       resetOpponentConnectionState();
     },
     [commitSnapshot, resetOpponentConnectionState, roomId, setOnlineSession, userId],
   );
+
+  const handleTurnTimerUpdated = useCallback((payload: TurnTimerUpdatedEvent) => {
+    setTurnDeadlineMs(payload?.turnDeadlineMs ?? null);
+  }, []);
+
+  const handleTurnTimeoutApplied = useCallback((payload: TurnTimeoutAppliedEvent) => {
+    if (!payload) {
+      return;
+    }
+
+    setTurnDeadlineMs(payload.snapshot.winner ? null : payload.snapshot.turnDeadlineMs ?? null);
+    setTimeoutNotice(
+      {
+        userId: payload.userId,
+        strikeCount: payload.strikeCount,
+        strikeLimit: payload.strikeLimit,
+      },
+    );
+  }, []);
 
   const handleMatchFinished = useCallback(
     (payload: MatchFinishedEvent) => {
@@ -89,6 +119,8 @@ export function useOnlineRoomSocket({
       }
 
       commitSnapshot(snapshot);
+      setTurnDeadlineMs(null);
+      setMatchEndedBy(payload?.endedBy ?? null);
       resetOpponentConnectionState();
     },
     [commitSnapshot, resetOpponentConnectionState],
@@ -111,6 +143,8 @@ export function useOnlineRoomSocket({
       socket.on(ONLINE_SOCKET_EVENT.MOVE_REJECTED, handleMoveRejected);
       socket.on(ONLINE_SOCKET_EVENT.MATCH_FINISHED, handleMatchFinished);
       socket.on(ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE, handlePeerConnectionState);
+      socket.on(ONLINE_SOCKET_EVENT.TURN_TIMER_UPDATED, handleTurnTimerUpdated);
+      socket.on(ONLINE_SOCKET_EVENT.TURN_TIMEOUT_APPLIED, handleTurnTimeoutApplied);
 
       return () => {
         socket.off("connect", onConnect);
@@ -120,6 +154,8 @@ export function useOnlineRoomSocket({
         socket.off(ONLINE_SOCKET_EVENT.MOVE_REJECTED, handleMoveRejected);
         socket.off(ONLINE_SOCKET_EVENT.MATCH_FINISHED, handleMatchFinished);
         socket.off(ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE, handlePeerConnectionState);
+        socket.off(ONLINE_SOCKET_EVENT.TURN_TIMER_UPDATED, handleTurnTimerUpdated);
+        socket.off(ONLINE_SOCKET_EVENT.TURN_TIMEOUT_APPLIED, handleTurnTimeoutApplied);
       };
     },
     [
@@ -129,6 +165,8 @@ export function useOnlineRoomSocket({
       handlePeerConnectionState,
       handleSocketConnect,
       handleSyncResponse,
+      handleTurnTimeoutApplied,
+      handleTurnTimerUpdated,
     ],
   );
 
@@ -159,6 +197,9 @@ export function useOnlineRoomSocket({
     if (!enabled) {
       resetPendingMoveState();
       clearOnlineSession();
+      setTurnDeadlineMs(null);
+      setMatchEndedBy(null);
+      setTimeoutNotice(null);
     }
   }, [clearOnlineSession, enabled, resetPendingMoveState]);
 
@@ -167,6 +208,20 @@ export function useOnlineRoomSocket({
       snapshotRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!timeoutNotice) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => {
+      setTimeoutNotice(null);
+    }, 2500);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [timeoutNotice]);
 
   const status = deriveOnlineUiStatus({
     transportState,
@@ -185,5 +240,8 @@ export function useOnlineRoomSocket({
     opponentDisconnected,
     opponentDisconnectDeadlineMs,
     opponentConnectionState,
+    turnDeadlineMs,
+    timeoutNotice,
+    matchEndedBy,
   };
 }

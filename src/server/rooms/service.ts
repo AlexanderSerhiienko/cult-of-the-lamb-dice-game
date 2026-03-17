@@ -1,7 +1,8 @@
-import { Prisma, RoomStatus } from "@prisma/client";
+import { GameMatchEndReason, Prisma, RoomStatus } from "@prisma/client";
 import { GAME_RESULT } from "@/features/game/core/types";
 import { upsertMatchResultForUser } from "@/server/matches/repository";
 import { MATCH_OUTCOME, TRACKED_MATCH_MODE } from "@/server/matches/types";
+import { finalizeRankedMatch } from "@/server/ranked/service";
 import {
   applyOnlineMove,
   canUserMove,
@@ -323,8 +324,9 @@ export async function saveRealtimeMatchState(params: {
   matchId: string;
   snapshot: OnlineAuthoritativeSnapshot;
   finished: boolean;
+  endedBy?: GameMatchEndReason;
 }): Promise<void> {
-  const { roomId, matchId, snapshot, finished } = params;
+  const { roomId, matchId, snapshot, finished, endedBy } = params;
   const match = await findMatchById(matchId);
   if (!match || match.roomId !== roomId) {
     throw new RoomServiceError("Match not found", 404);
@@ -337,11 +339,24 @@ export async function saveRealtimeMatchState(params: {
     currentRoll: snapshot.currentRoll,
     snapshot,
     actorUserId: snapshot.turnUserId,
-    finish: finished ? { winnerUserId: resolveWinnerUserId(snapshot) } : undefined,
+    finish: finished
+      ? {
+          winnerUserId: resolveWinnerUserId(snapshot),
+          endedBy,
+        }
+      : undefined,
   });
 
   if (finished) {
-    await persistOnlineMatchResults(snapshot);
+    if (match.mode === "RANKED") {
+      await finalizeRankedMatch({
+        matchId,
+        winner: snapshot.winner,
+        endedBy,
+      });
+    } else {
+      await persistOnlineMatchResults(snapshot);
+    }
     await closeRoomAfterMatchFinished(roomId);
   }
 }

@@ -9,6 +9,8 @@ export const ONLINE_SOCKET_EVENT = {
   ROOM_STATE: "room_state",
   MATCH_FINISHED: "match_finished",
   PEER_CONNECTION_STATE: "peer_connection_state",
+  TURN_TIMER_UPDATED: "turn_timer_updated",
+  TURN_TIMEOUT_APPLIED: "turn_timeout_applied",
   ERROR: "error",
 };
 

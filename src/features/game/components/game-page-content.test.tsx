@@ -28,6 +28,8 @@ describe("GamePageContent", () => {
       },
     );
 
+    expect(screen.getByRole("link", { name: "Main menu" })).toHaveAttribute("href", "/");
+
     await user.click(screen.getByRole("button", { name: "New game" }));
 
     expect(store.getState().currentRoll).toBe(6);

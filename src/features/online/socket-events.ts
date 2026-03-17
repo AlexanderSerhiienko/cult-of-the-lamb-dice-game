@@ -12,6 +12,8 @@ export const ONLINE_SOCKET_EVENT = {
   ROOM_STATE: "room_state",
   MATCH_FINISHED: "match_finished",
   PEER_CONNECTION_STATE: "peer_connection_state",
+  TURN_TIMER_UPDATED: "turn_timer_updated",
+  TURN_TIMEOUT_APPLIED: "turn_timeout_applied",
   ERROR: "error",
 } as const;
 
@@ -72,6 +74,25 @@ export type SyncResponseEvent = {
 export type MatchFinishedEvent = {
   roomId: string;
   matchId: string;
+  revision: number;
+  snapshot: OnlineAuthoritativeSnapshot;
+  endedBy?: "NORMAL" | "TIMEOUT" | "DISCONNECT" | "LEAVE" | "DRAW";
+};
+
+export type TurnTimerUpdatedEvent = {
+  roomId: string;
+  matchId: string;
+  turnUserId: string | null;
+  turnDeadlineMs: number | null;
+};
+
+export type TurnTimeoutAppliedEvent = {
+  roomId: string;
+  matchId: string;
+  userId: string;
+  columnIndex: ColumnIndex;
+  strikeCount: number;
+  strikeLimit: number;
   revision: number;
   snapshot: OnlineAuthoritativeSnapshot;
 };

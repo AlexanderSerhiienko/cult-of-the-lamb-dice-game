@@ -38,7 +38,7 @@ describe("LeaderboardPage", () => {
     expect(screen.getByText("8/3/1")).toBeInTheDocument();
     expect(screen.getByText("67%")).toBeInTheDocument();
     expect(screen.getByText("24")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Main menu" })).toHaveAttribute("href", "/");
   });
 
   it("renders an error when leaderboard fetch fails", async () => {

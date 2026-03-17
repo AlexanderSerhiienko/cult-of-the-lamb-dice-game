@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
+import { ActionButton } from "@/components/ui/action-button";
 
 const isTestAuthEnabled = process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH === "1";
 
@@ -32,13 +33,13 @@ function TestAuthPageContent() {
     return (
       <section className="mx-auto max-w-lg rounded-xl border border-slate-800 bg-slate-900/60 p-6">
         <h1 className="text-xl font-semibold text-slate-100">Already signed in</h1>
-        <button
-          type="button"
+        <ActionButton
           onClick={() => router.push(nextPath)}
-          className="mt-4 rounded-md border border-emerald-500/60 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100"
+          variant="accent"
+          className="mt-4"
         >
           Continue
-        </button>
+        </ActionButton>
       </section>
     );
   }
@@ -92,13 +93,13 @@ function TestAuthPageContent() {
           />
         </label>
 
-        <button
+        <ActionButton
           type="submit"
           disabled={submitting || !email}
-          className="rounded-md border border-emerald-500/60 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60"
+          variant="accent"
         >
           {submitting ? "Signing in..." : "Sign in with test auth"}
-        </button>
+        </ActionButton>
       </form>
 
       {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}

@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { AuthControls } from "@/components/auth/auth-controls";
 import { GameHeaderActions } from "@/components/layout/game-header-actions";
+import { HeaderAccountPanel } from "@/components/layout/header-account-panel";
 import { OnlineHeaderActions } from "@/components/layout/online-header-actions";
 import { GAME_STATUS } from "@/features/game/core/types";
 import { useGameStore } from "@/features/game/store/use-game-store";
@@ -25,19 +25,39 @@ function getOnlineRoomId(pathname: string): string | null {
 function getShellRouteContext(pathname: string) {
   const isHomeRoute = pathname === "/";
   const isGameRoute = pathname.startsWith("/game");
-  const isOnlineRoute = pathname.startsWith("/online");
+  const isOnlineEntryRoute = pathname === "/online";
+  const isOnlineLobbyRoute = /^\/online\/room\/[^/]+$/.test(pathname);
   const isOnlinePlayRoute = /^\/online\/room\/[^/]+\/play$/.test(pathname);
+  const isRankedRoute = pathname === "/ranked";
+  const isRankedMatchRoute = /^\/ranked\/match\/[^/]+$/.test(pathname);
 
   return {
     isHomeRoute,
     isGameRoute,
-    isOnlineRoute,
+    isOnlineRoute: isOnlineEntryRoute || isOnlineLobbyRoute || isOnlinePlayRoute,
+    isOnlineEntryRoute,
+    isOnlineLobbyRoute,
     isOnlinePlayRoute,
-    showBackLink: !isHomeRoute,
+    isRankedRoute,
+    isRankedMatchRoute,
     showGameActions: isGameRoute,
     showOnlineActions: isOnlinePlayRoute,
+    showRankedSegment: !isRankedRoute && !isRankedMatchRoute && !isOnlinePlayRoute,
     onlineRoomId: isOnlinePlayRoute ? getOnlineRoomId(pathname) : null,
-    contextLabel: isOnlinePlayRoute ? "Online match" : isOnlineRoute ? "Online" : isGameRoute ? "Game" : null,
+    contextLabel:
+      isOnlinePlayRoute
+        ? "Online match"
+        : isOnlineLobbyRoute
+          ? "Online room"
+          : isOnlineEntryRoute
+            ? "Online"
+            : isRankedMatchRoute
+              ? "Ranked match"
+              : isRankedRoute
+                ? "Ranked"
+                : isGameRoute
+                  ? "Game"
+                  : null,
   };
 }
 
@@ -83,14 +103,6 @@ export function AppShell({ children }: AppShellProps) {
                 {routeContext.contextLabel}
               </span>
             ) : null}
-            {routeContext.showBackLink ? (
-              <Link
-                href="/"
-                className="ml-auto rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300 transition hover:border-slate-700 hover:bg-slate-900 sm:ml-0"
-              >
-                Back
-              </Link>
-            ) : null}
           </div>
 
           <div className="flex flex-1 flex-col gap-3 lg:min-w-0 lg:flex-row lg:items-center lg:justify-end">
@@ -113,7 +125,7 @@ export function AppShell({ children }: AppShellProps) {
             ) : null}
 
             <div className="flex items-center justify-start lg:justify-end">
-              <AuthControls />
+              <HeaderAccountPanel showRankedSegment={routeContext.showRankedSegment} />
             </div>
           </div>
         </div>

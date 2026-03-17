@@ -7,7 +7,7 @@ import { BOT_DIFFICULTY } from "@/features/game/core/types";
 import { renderWithProviders } from "@/test/render";
 
 describe("SettingsContent", () => {
-  it("renders current settings and back link", () => {
+  it("renders current settings and main menu link", () => {
     renderWithProviders(<SettingsContent />, {
       pathname: "/settings",
       storeOptions: {
@@ -19,7 +19,7 @@ describe("SettingsContent", () => {
     });
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Main menu" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("button", { name: "On" })).toBeInTheDocument();
   });
 

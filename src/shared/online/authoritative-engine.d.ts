@@ -22,6 +22,9 @@ export type OnlineAuthoritativeSnapshot = {
     seat2: string;
   };
   connectionStates?: Record<string, OnlineConnectionState>;
+  isRanked?: boolean;
+  turnDeadlineMs?: number | null;
+  timeoutStrikes?: Record<string, number>;
 };
 
 export function createInitialOnlineSnapshot(params: {

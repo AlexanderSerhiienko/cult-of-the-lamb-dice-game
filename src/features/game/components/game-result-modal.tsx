@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
+import { ActionButton } from "@/components/ui/action-button";
 
 type GameResultModalProps = {
   isOpen: boolean;
@@ -12,6 +14,7 @@ type GameResultModalProps = {
   actionHref?: string;
   secondaryActionLabel?: string;
   secondaryActionHref?: string;
+  details?: ReactNode;
 };
 
 export function GameResultModal({
@@ -25,6 +28,7 @@ export function GameResultModal({
   actionHref,
   secondaryActionLabel,
   secondaryActionHref,
+  details,
 }: GameResultModalProps) {
   return (
     <Modal
@@ -36,6 +40,7 @@ export function GameResultModal({
       <p className="mt-2 text-sm text-slate-300">
         Final score: {playerScore} - {botScore}
       </p>
+      {details ? <div className="mt-4">{details}</div> : null}
       <div className="mt-4 space-y-3">
         {actionHref ? (
           <Link
@@ -45,13 +50,15 @@ export function GameResultModal({
             {actionLabel}
           </Link>
         ) : (
-          <button
-            type="button"
+          <ActionButton
             onClick={onRematch}
-            className="w-full rounded-md bg-violet-400 px-4 py-2.5 text-base font-semibold text-slate-950 transition hover:bg-violet-300"
+            variant="menu"
+            size="md"
+            fullWidth
+            className="text-base"
           >
             {actionLabel}
-          </button>
+          </ActionButton>
         )}
 
         {secondaryActionHref ? (

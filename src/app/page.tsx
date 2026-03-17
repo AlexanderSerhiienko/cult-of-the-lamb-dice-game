@@ -21,7 +21,9 @@ export default function Home() {
       </MenuActionButton>
       <ActiveMatchAction />
       <MenuActionButton href="/leaderboard">Leaderboard</MenuActionButton>
-      <MenuActionButton disabled>Ranked (coming soon)</MenuActionButton>
+      <MenuActionButton href="/ranked" disabled={!isAuthenticated}>
+        {isAuthenticated ? "Ranked" : "Ranked (sign in required)"}
+      </MenuActionButton>
       <MenuActionButton href="/settings">Settings</MenuActionButton>
       <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-left">
         <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">How to play</h2>

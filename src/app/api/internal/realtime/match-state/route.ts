@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { GameMatchEndReason } from "@prisma/client";
 import { requireRealtimeInternal } from "@/server/auth/require-realtime-internal";
 import type { OnlineAuthoritativeSnapshot } from "@/server/rooms/authoritative-engine";
 import { RoomServiceError, saveRealtimeMatchState } from "@/server/rooms/service";
@@ -8,6 +9,7 @@ type MatchStatePayload = {
   matchId?: string;
   snapshot?: OnlineAuthoritativeSnapshot;
   finished?: boolean;
+  endedBy?: GameMatchEndReason;
 };
 
 export async function POST(request: Request) {
@@ -20,6 +22,7 @@ export async function POST(request: Request) {
   const matchId = payload?.matchId;
   const snapshot = payload?.snapshot;
   const finished = Boolean(payload?.finished);
+  const endedBy = payload?.endedBy;
 
   if (!roomId || !matchId || !snapshot) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -31,6 +34,7 @@ export async function POST(request: Request) {
       matchId,
       snapshot,
       finished,
+      ...(endedBy ? { endedBy } : {}),
     });
 
     return NextResponse.json({ ok: true });
@@ -41,4 +45,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to persist match state" }, { status: 500 });
   }
 }
-

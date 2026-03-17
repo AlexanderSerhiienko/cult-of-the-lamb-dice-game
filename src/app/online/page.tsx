@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { PagePanel } from "@/components/layout/page-panel";
+import { ActionButton } from "@/components/ui/action-button";
 import { createRoom, joinRoom } from "@/features/online/api";
 
 export default function OnlineEntryPage() {
@@ -40,48 +42,56 @@ export default function OnlineEntryPage() {
 
   if (status !== "authenticated") {
     return (
-      <section className="mx-auto max-w-xl rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-        <h1 className="text-xl font-semibold text-slate-100">Online private rooms</h1>
-        <p className="mt-3 text-sm text-slate-400">Sign in first to create or join online rooms.</p>
-      </section>
+      <PagePanel
+        maxWidthClassName="max-w-xl"
+        panelClassName="rounded-xl border border-slate-800 bg-slate-900/60 p-6 pt-14 sm:pt-16"
+        backHref="/"
+        backInsetClassName="left-4 top-4 sm:left-6 sm:top-6"
+      >
+          <h1 className="text-xl font-semibold text-slate-100">Online private rooms</h1>
+          <p className="mt-3 text-sm text-slate-400">Sign in first to create or join online rooms.</p>
+      </PagePanel>
     );
   }
 
   return (
-    <section className="mx-auto max-w-xl rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-      <h1 className="text-xl font-semibold text-slate-100">Online private rooms</h1>
-      <p className="mt-2 text-sm text-slate-400">Create a room and share code with a friend.</p>
+    <PagePanel
+      maxWidthClassName="max-w-xl"
+      panelClassName="rounded-xl border border-slate-800 bg-slate-900/60 p-6 pt-14 sm:pt-16"
+      backHref="/"
+      backInsetClassName="left-4 top-4 sm:left-6 sm:top-6"
+    >
+        <h1 className="text-xl font-semibold text-slate-100">Online private rooms</h1>
+        <p className="mt-2 text-sm text-slate-400">Create a room and share code with a friend.</p>
 
-      <div className="mt-5 flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={loading}
-          className="rounded-md border border-emerald-500/60 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 disabled:opacity-60"
-        >
-          Create room
-        </button>
-
-        <div className="flex gap-2">
-          <input
-            value={joinCode}
-            onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
-            placeholder="ROOM CODE"
-            className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
-            maxLength={6}
-          />
-          <button
-            type="button"
-            onClick={handleJoin}
-            disabled={loading || joinCode.length !== 6}
-            className="rounded-md border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 disabled:opacity-60"
+        <div className="mt-5 flex flex-col gap-3">
+          <ActionButton
+            onClick={handleCreate}
+            disabled={loading}
+            variant="accent"
           >
-            Join
-          </button>
-        </div>
-      </div>
+            Create room
+          </ActionButton>
 
-      {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
-    </section>
+          <div className="flex gap-2">
+            <input
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+              placeholder="ROOM CODE"
+              className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none"
+              maxLength={6}
+            />
+            <ActionButton
+              onClick={handleJoin}
+              disabled={loading || joinCode.length !== 6}
+              variant="neutral"
+            >
+              Join
+            </ActionButton>
+          </div>
+        </div>
+
+        {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+    </PagePanel>
   );
 }

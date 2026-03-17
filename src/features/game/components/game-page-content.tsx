@@ -8,6 +8,7 @@ import { GameSideRail } from "@/features/game/components/game-side-rail";
 import { useBotTurnEffect } from "@/features/game/hooks/use-bot-turn-effect";
 import { useGamePageViewModel } from "@/features/game/hooks/use-game-page-viewmodel";
 import { useMatchReportEffect } from "@/features/game/hooks/use-match-report-effect";
+import { PageBackLink } from "@/components/ui/page-back-link";
 
 type GamePageContentProps = {
   mode: GameMode;
@@ -40,7 +41,13 @@ export function GamePageContent({ mode }: GamePageContentProps) {
   useMatchReportEffect();
 
   return (
-    <section className="h-[calc(100vh-7.5rem)]">
+    <section className="relative h-[calc(100vh-7.5rem)]">
+      <div className="pointer-events-none absolute left-0 top-0 z-10">
+        <div className="pointer-events-auto">
+          <PageBackLink href="/" label="Main menu" variant="overlay" />
+        </div>
+      </div>
+
       <div className="grid h-full grid-cols-[220px_minmax(0,1fr)_220px] gap-5 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         <GameSideRail
           scoreLabel={seat1ScoreLabel}

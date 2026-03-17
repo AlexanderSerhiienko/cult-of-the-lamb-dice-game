@@ -22,6 +22,7 @@ describe("OnlineEntryPage", () => {
 
     expect(screen.getByText("Online private rooms")).toBeInTheDocument();
     expect(screen.getByText("Sign in first to create or join online rooms.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Main menu" })).toHaveAttribute("href", "/");
     expect(screen.queryByRole("button", { name: "Create room" })).not.toBeInTheDocument();
   });
 
@@ -49,6 +50,8 @@ describe("OnlineEntryPage", () => {
       expect(mockCreateRoom).toHaveBeenCalledTimes(1);
       expect(push).toHaveBeenCalledWith("/online/room/room-1");
     });
+
+    expect(screen.getByRole("link", { name: "Main menu" })).toHaveAttribute("href", "/");
   });
 
   it("normalizes the join code before joining a room", async () => {

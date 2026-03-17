@@ -5,6 +5,16 @@ import { LatencyMetrics } from "./metrics/latency-metrics.mjs";
 import { createConsoleTelemetrySink } from "./observability/telemetry.mjs";
 import { verifyRoomToken as defaultVerifyRoomToken } from "./auth/verify-token.mjs";
 import { RoomManager } from "./rooms/room-manager.mjs";
+import { RankedQueueManager } from "./ranked/queue-manager.mjs";
+import {
+  applyRankedTimeout,
+  emitRankedTimeoutApplied,
+  emitRankedTurnTimerUpdated,
+  getTimeoutStrikes,
+  isRankedSnapshot,
+  resolveRankedTurnDeadline,
+  withRankedRealtimeState,
+} from "./ranked/runtime.mjs";
 import { CONNECTION_STATE_STATUS, ONLINE_SOCKET_EVENT, PEER_CONNECTION_REASON } from "./socket-events.mjs";
 
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
@@ -12,7 +22,6 @@ const DEFAULT_FETCH_RETRIES = 2;
 const DEFAULT_STALE_CLEANUP_INTERVAL_MS = 5 * 60_000;
 const DEFAULT_STALE_ROOM_MS = 30 * 60_000;
 const DEFAULT_STALE_MATCH_MS = 30 * 60_000;
-
 async function requestWithRetry(params) {
   const {
     fetchImpl,
@@ -87,6 +96,29 @@ async function defaultCheckWebApiReady(params) {
   return response.status < 500;
 }
 
+async function readJsonBody(request) {
+  const chunks = [];
+
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  if (chunks.length === 0) {
+    return null;
+  }
+
+  const rawBody = Buffer.concat(chunks).toString("utf8");
+  if (!rawBody) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawBody);
+  } catch {
+    return null;
+  }
+}
+
 function defaultFetchers(params) {
   const { webApiUrl, internalSecret, telemetry, fetchImpl } = params;
 
@@ -110,7 +142,7 @@ function defaultFetchers(params) {
       const data = await response.json();
       return data.snapshot;
     },
-    async persistMatchState({ roomId, matchId, snapshot, finished }) {
+    async persistMatchState({ roomId, matchId, snapshot, finished, endedBy }) {
       await requestWithRetry({
         fetchImpl,
         telemetry,
@@ -126,6 +158,7 @@ function defaultFetchers(params) {
             matchId,
             snapshot,
             finished,
+            endedBy,
           }),
         },
         eventName: "match_state.persist",
@@ -179,6 +212,24 @@ function defaultFetchers(params) {
       const data = await response.json().catch(() => null);
       return typeof data?.matchId === "string" ? data.matchId : null;
     },
+    async createRankedMatch({ seat1UserId, seat2UserId }) {
+      const response = await requestWithRetry({
+        fetchImpl,
+        telemetry,
+        url: `${webApiUrl}/api/internal/realtime/ranked-match`,
+        init: {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-realtime-internal-secret": internalSecret,
+          },
+          body: JSON.stringify({ seat1UserId, seat2UserId }),
+        },
+        eventName: "ranked_match.create",
+      });
+
+      return response.json();
+    },
   };
 }
 
@@ -216,6 +267,7 @@ export function createRealtimeServer(options = {}) {
     options.internalSecret ?? process.env.REALTIME_INTERNAL_SECRET ?? "dev-realtime-internal-secret";
   const verifyRoomToken = options.verifyRoomToken ?? defaultVerifyRoomToken;
   const roomManager = options.roomManager ?? new RoomManager();
+  const rankedQueueManager = options.rankedQueueManager ?? new RankedQueueManager();
   const telemetry = options.telemetry ?? createConsoleTelemetrySink("realtime");
   const fetchImpl = options.fetchImpl ?? fetch;
   const moveLatencyMetrics =
@@ -231,11 +283,192 @@ export function createRealtimeServer(options = {}) {
   const staleRoomMs = options.staleRoomMs ?? DEFAULT_STALE_ROOM_MS;
   const staleMatchMs = options.staleMatchMs ?? DEFAULT_STALE_MATCH_MS;
   const configValid = Boolean(origin && webApiUrl && internalSecret);
+  const randomFn = options.randomFn ?? Math.random;
+  const rankedTurnTimeouts = new Map();
+
+  function clearRankedTurnTimeout(matchId) {
+    const timeoutId = rankedTurnTimeouts.get(matchId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      rankedTurnTimeouts.delete(matchId);
+    }
+  }
+
+  function isTurnPlayerDisconnected(roomId, snapshot) {
+    if (!snapshot?.turnUserId) {
+      return false;
+    }
+
+    const roomState = roomManager.rooms.get(roomId);
+    const playerState = roomState?.players?.[snapshot.turnUserId];
+    return Boolean(playerState?.disconnectedAt);
+  }
+
+  async function handleRankedTurnTimeout({ roomId, matchId }) {
+    const snapshot = roomManager.getMatch(matchId);
+    if (!snapshot || !isRankedSnapshot(snapshot) || snapshot.winner || !snapshot.turnUserId || !snapshot.currentRoll) {
+      clearRankedTurnTimeout(matchId);
+      return;
+    }
+
+    const deadlineMs = typeof snapshot.turnDeadlineMs === "number" ? snapshot.turnDeadlineMs : null;
+    if (deadlineMs && deadlineMs > Date.now()) {
+      scheduleRankedTurnTimeout({ roomId, matchId, snapshot });
+      return;
+    }
+
+    const timeoutResult = applyRankedTimeout({
+      snapshot,
+      randomFn,
+      applyAuthoritativeMove,
+      isTurnPlayerDisconnected: isTurnPlayerDisconnected(roomId, snapshot),
+      isNextTurnPlayerDisconnected: (nextSnapshot) => isTurnPlayerDisconnected(roomId, nextSnapshot),
+    });
+
+    if (!timeoutResult) {
+      clearRankedTurnTimeout(matchId);
+      return;
+    }
+
+    try {
+      await fetchers.persistMatchState({
+        roomId,
+        matchId,
+        snapshot: timeoutResult.snapshot,
+        finished: Boolean(timeoutResult.snapshot.winner),
+        endedBy: timeoutResult.endedBy,
+      });
+    } catch (error) {
+      telemetry.trackError("ranked_timeout.persist_failed", {
+        roomId,
+        matchId,
+        userId: timeoutResult.timedOutUserId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      scheduleRankedTurnTimeout({ roomId, matchId, snapshot });
+      return;
+    }
+
+    roomManager.setMatch(matchId, timeoutResult.snapshot);
+    emitRankedTimeoutApplied({
+      io,
+      roomId,
+      matchId,
+      timeoutResult,
+    });
+
+    if (timeoutResult.snapshot.winner) {
+      clearRankedTurnTimeout(matchId);
+      io.to(roomId).emit(ONLINE_SOCKET_EVENT.MATCH_FINISHED, {
+        roomId,
+        matchId,
+        revision: timeoutResult.snapshot.revision,
+        snapshot: timeoutResult.snapshot,
+        endedBy: timeoutResult.endedBy,
+      });
+      return;
+    }
+
+    emitRankedTurnTimerUpdated({ io, roomId, matchId, snapshot: timeoutResult.snapshot });
+    scheduleRankedTurnTimeout({ roomId, matchId, snapshot: timeoutResult.snapshot });
+  }
+
+  function scheduleRankedTurnTimeout({ roomId, matchId, snapshot }) {
+    clearRankedTurnTimeout(matchId);
+
+    if (!isRankedSnapshot(snapshot) || snapshot.winner || !snapshot.turnUserId || !snapshot.currentRoll) {
+      return;
+    }
+
+    if (isTurnPlayerDisconnected(roomId, snapshot)) {
+      return;
+    }
+
+    const deadlineMs =
+      typeof snapshot.turnDeadlineMs === "number"
+        ? snapshot.turnDeadlineMs
+        : resolveRankedTurnDeadline({
+            snapshot,
+            isTurnPlayerDisconnected: isTurnPlayerDisconnected(roomId, snapshot),
+          });
+    if (deadlineMs === null) {
+      return;
+    }
+    const timeoutMs = Math.max(0, deadlineMs - Date.now());
+    const timeoutId = setTimeout(() => {
+      void handleRankedTurnTimeout({ roomId, matchId });
+    }, timeoutMs);
+    timeoutId.unref?.();
+    rankedTurnTimeouts.set(matchId, timeoutId);
+  }
 
   const httpServer = createServer(async (request, response) => {
     if (!request.url) {
       response.writeHead(404).end();
       return;
+    }
+
+    if (request.url === "/ranked/queue" && (request.method === "POST" || request.method === "DELETE")) {
+      const providedSecret = request.headers["x-realtime-internal-secret"];
+      if (providedSecret !== internalSecret) {
+        response.writeHead(403, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ error: "Forbidden" }));
+        return;
+      }
+
+      const payload = await readJsonBody(request);
+      const userId = typeof payload?.userId === "string" ? payload.userId : "";
+
+      if (!userId) {
+        response.writeHead(400, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ error: "Invalid payload" }));
+        return;
+      }
+
+      if (request.method === "DELETE") {
+        rankedQueueManager.dequeue(userId);
+        response.writeHead(200, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ searching: false }));
+        return;
+      }
+
+      const mmr = typeof payload?.mmr === "number" ? payload.mmr : 0;
+      rankedQueueManager.enqueue({ userId, mmr });
+      const matched = rankedQueueManager.attemptMatch();
+
+      if (!matched) {
+        response.writeHead(200, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ searching: true }));
+        return;
+      }
+
+      try {
+        const rankedMatch = await fetchers.createRankedMatch({
+          seat1UserId: matched.seat1.userId,
+          seat2UserId: matched.seat2.userId,
+        });
+
+        response.writeHead(200, { "Content-Type": "application/json" });
+        response.end(
+          JSON.stringify({
+            searching: false,
+            roomId: rankedMatch.roomId,
+            matchId: rankedMatch.matchId,
+          }),
+        );
+        return;
+      } catch (error) {
+        rankedQueueManager.enqueue(matched.seat1);
+        rankedQueueManager.enqueue(matched.seat2);
+        telemetry.trackError("ranked_matchmaking.create_failed", {
+          seat1UserId: matched.seat1.userId,
+          seat2UserId: matched.seat2.userId,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+        response.writeHead(500, { "Content-Type": "application/json" });
+        response.end(JSON.stringify({ error: "Failed to create ranked match" }));
+        return;
+      }
     }
 
     if (request.method === "GET" && request.url === "/health") {
@@ -245,6 +478,7 @@ export function createRealtimeServer(options = {}) {
           status: "ok",
           roomCount: roomManager.rooms.size,
           matchCount: roomManager.matches.size,
+          rankedQueueSize: rankedQueueManager.size(),
         }),
       );
       return;
@@ -319,7 +553,7 @@ export function createRealtimeServer(options = {}) {
   }, staleCleanupIntervalMs);
   staleCleanupIntervalId.unref?.();
 
-  async function finalizeDisconnectForfeit({ roomId, userId }) {
+  async function finalizeDisconnectForfeit({ roomId, userId, endedBy = "DISCONNECT" }) {
     const latest = roomManager.ensureRoom(roomId);
     const fallbackMatchId = roomManager.findMatchIdByRoomId(roomId);
     const dbMatchId = await fetchers.fetchCurrentMatchId({ roomId });
@@ -348,12 +582,18 @@ export function createRealtimeServer(options = {}) {
       });
 
       if (forfeitedSnapshot) {
+        const endedSnapshot = isRankedSnapshot(forfeitedSnapshot)
+          ? withRankedRealtimeState(forfeitedSnapshot, {
+              turnDeadlineMs: null,
+            })
+          : forfeitedSnapshot;
         try {
           await fetchers.persistMatchState({
             roomId,
             matchId,
-            snapshot: forfeitedSnapshot,
+            snapshot: endedSnapshot,
             finished: true,
+            endedBy,
           });
         } catch (error) {
           telemetry.trackError("disconnect_forfeit.persist_failed", {
@@ -365,12 +605,14 @@ export function createRealtimeServer(options = {}) {
           return;
         }
 
-        roomManager.setMatch(matchId, forfeitedSnapshot);
+        clearRankedTurnTimeout(matchId);
+        roomManager.setMatch(matchId, endedSnapshot);
         io.to(roomId).emit(ONLINE_SOCKET_EVENT.MATCH_FINISHED, {
           roomId,
           matchId,
-          revision: forfeitedSnapshot.revision,
-          snapshot: forfeitedSnapshot,
+          revision: endedSnapshot.revision,
+          snapshot: endedSnapshot,
+          endedBy,
         });
       }
     }
@@ -444,7 +686,15 @@ export function createRealtimeServer(options = {}) {
 
       const reconnectState = snapshot.connectionStates && snapshot.connectionStates[userId];
       if (reconnectState?.status === CONNECTION_STATE_STATUS.DISCONNECTED) {
-        const reconnectedSnapshot = withConnectedConnectionState(snapshot, userId);
+        let reconnectedSnapshot = withConnectedConnectionState(snapshot, userId);
+        if (isRankedSnapshot(reconnectedSnapshot) && reconnectedSnapshot.turnDeadlineMs === null) {
+          reconnectedSnapshot = withRankedRealtimeState(reconnectedSnapshot, {
+            turnDeadlineMs: resolveRankedTurnDeadline({
+              snapshot: reconnectedSnapshot,
+              isTurnPlayerDisconnected: isTurnPlayerDisconnected(roomId, reconnectedSnapshot),
+            }),
+          });
+        }
         try {
           await fetchers.persistMatchState({
             roomId,
@@ -467,6 +717,12 @@ export function createRealtimeServer(options = {}) {
             error: error instanceof Error ? error.message : "Unknown error",
           });
         }
+      }
+
+      if (isRankedSnapshot(snapshot)) {
+        roomManager.setMatch(matchId, snapshot);
+        emitRankedTurnTimerUpdated({ io, roomId, matchId, snapshot });
+        scheduleRankedTurnTimeout({ roomId, matchId, snapshot });
       }
 
       const deltaEvents =
@@ -610,12 +866,29 @@ export function createRealtimeServer(options = {}) {
         return;
       }
 
+      if (isRankedSnapshot(nextSnapshot)) {
+        nextSnapshot = withRankedRealtimeState(nextSnapshot, {
+          turnDeadlineMs:
+            nextSnapshot.winner
+              ? null
+              : resolveRankedTurnDeadline({
+                  snapshot: nextSnapshot,
+                  isTurnPlayerDisconnected: isTurnPlayerDisconnected(roomId, nextSnapshot),
+                }),
+          timeoutStrikes: getTimeoutStrikes(snapshot),
+        });
+      }
+
+      const naturalEndReason =
+        nextSnapshot.winner === "draw" ? "DRAW" : nextSnapshot.winner ? "NORMAL" : undefined;
+
         try {
           await fetchers.persistMatchState({
             roomId,
             matchId,
             snapshot: nextSnapshot,
             finished: Boolean(nextSnapshot.winner),
+            endedBy: naturalEndReason,
           });
           telemetry.trackEvent("match_state.persisted", {
             roomId,
@@ -646,6 +919,13 @@ export function createRealtimeServer(options = {}) {
 
       roomManager.setMatch(matchId, nextSnapshot);
       roomManager.applyMove(roomId, userId, { matchId });
+      if (isRankedSnapshot(nextSnapshot)) {
+        if (nextSnapshot.winner) {
+          clearRankedTurnTimeout(matchId);
+        } else {
+          scheduleRankedTurnTimeout({ roomId, matchId, snapshot: nextSnapshot });
+        }
+      }
 
       const serverAppliedAt = Date.now();
       io.to(roomId).emit(ONLINE_SOCKET_EVENT.MOVE_APPLIED, {
@@ -664,7 +944,10 @@ export function createRealtimeServer(options = {}) {
           matchId,
           revision: nextSnapshot.revision,
           snapshot: nextSnapshot,
+          endedBy: naturalEndReason,
         });
+      } else if (isRankedSnapshot(nextSnapshot)) {
+        emitRankedTurnTimerUpdated({ io, roomId, matchId, snapshot: nextSnapshot });
       }
 
       moveLatencyMetrics.push(serverAppliedAt - serverReceivedAt, {
@@ -698,19 +981,25 @@ export function createRealtimeServer(options = {}) {
           at: disconnectedAt,
           disconnectedAt,
         });
-        void finalizeDisconnectForfeit({ roomId, userId });
+        void finalizeDisconnectForfeit({ roomId, userId, endedBy: "LEAVE" });
         return;
       }
 
       const matchId = state.matchId || roomManager.findMatchIdByRoomId(roomId);
       const snapshot = matchId ? roomManager.getMatch(matchId) : null;
       if (matchId && snapshot && !snapshot.winner) {
-        const snapshotWithReconnectState = withDisconnectedConnectionState(
+        let snapshotWithReconnectState = withDisconnectedConnectionState(
           snapshot,
           userId,
           disconnectedAt,
           graceEndsAt,
         );
+        if (isRankedSnapshot(snapshotWithReconnectState) && snapshot.turnUserId === userId) {
+          clearRankedTurnTimeout(matchId);
+          snapshotWithReconnectState = withRankedRealtimeState(snapshotWithReconnectState, {
+            turnDeadlineMs: null,
+          });
+        }
 
         try {
           await fetchers.persistMatchState({
@@ -751,7 +1040,7 @@ export function createRealtimeServer(options = {}) {
         const latest = roomManager.ensureRoom(roomId);
         const player = latest.players[userId];
         if (player && player.disconnectedAt && Date.now() - player.disconnectedAt >= gracePeriodMs) {
-          void finalizeDisconnectForfeit({ roomId, userId });
+          void finalizeDisconnectForfeit({ roomId, userId, endedBy: "DISCONNECT" });
         }
       }, gracePeriodMs + 100);
     });
@@ -761,6 +1050,7 @@ export function createRealtimeServer(options = {}) {
     io,
     httpServer,
     roomManager,
+    rankedQueueManager,
     async listen(port, host = "127.0.0.1") {
       await new Promise((resolve, reject) => {
         httpServer.listen(port, host, (error) => {
@@ -775,6 +1065,9 @@ export function createRealtimeServer(options = {}) {
     },
     async close() {
       clearInterval(staleCleanupIntervalId);
+      for (const matchId of rankedTurnTimeouts.keys()) {
+        clearRankedTurnTimeout(matchId);
+      }
       await new Promise((resolve, reject) => {
         io.close((error) => {
           if (error) {

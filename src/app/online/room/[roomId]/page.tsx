@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ActionButton } from "@/components/ui/action-button";
 import { fetchRoom, leaveRoom, startMatch, type RoomApiSnapshot } from "@/features/online/api";
 
 const LOBBY_COPY_STATE = {
@@ -150,13 +151,14 @@ export default function OnlineRoomLobbyPage() {
     <section className="mx-auto max-w-2xl rounded-xl border border-slate-800 bg-slate-900/60 p-6">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold text-slate-100">Room {room.room.code}</h1>
-        <button
-          type="button"
+        <ActionButton
           onClick={handleCopyCode}
-          className="rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:bg-slate-900"
+          variant="neutral"
+          size="sm"
+          className="uppercase tracking-[0.16em]"
         >
           {copyButtonLabel}
-        </button>
+        </ActionButton>
       </div>
       <p className="mt-2 text-sm text-slate-400">Share this code to invite another player.</p>
       {showCopyError ? (
@@ -175,22 +177,20 @@ export default function OnlineRoomLobbyPage() {
       </ul>
 
       <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          type="button"
+        <ActionButton
           onClick={handleStart}
           disabled={!canStart}
-          className="rounded-md border border-emerald-500/60 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 transition active:scale-[0.98] active:bg-emerald-500/35 disabled:opacity-60"
+          variant="accent"
         >
           {startButtonLabel}
-        </button>
-        <button
-          type="button"
+        </ActionButton>
+        <ActionButton
           onClick={handleLeave}
           disabled={leaveDisabled}
-          className="rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition active:scale-[0.98] active:bg-slate-900 disabled:opacity-60"
+          variant="neutral"
         >
           {isLeaving ? "Leaving..." : "Leave room"}
-        </button>
+        </ActionButton>
       </div>
 
       {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
