@@ -14,6 +14,7 @@ enum AppRole {
 enum MatchMode {
   BOT
   ONLINE
+  RANKED
 }
 
 enum MatchOutcome {
@@ -24,6 +25,7 @@ enum MatchOutcome {
 
 enum RoomVisibility {
   PRIVATE
+  RANKED
 }
 
 enum RoomStatus {
@@ -42,6 +44,14 @@ enum GameMatchStatus {
   ACTIVE
   FINISHED
   CANCELLED
+}
+
+enum GameMatchEndReason {
+  NORMAL
+  TIMEOUT
+  DISCONNECT
+  LEAVE
+  DRAW
 }
 
 enum GameMatchEventType {
@@ -70,6 +80,10 @@ model User {
   gameMatchParticipants GameMatchParticipant[]
   gameMatchEvents GameMatchEvent[]   @relation("EventActor")
   wonGameMatches GameMatch[]         @relation("GameMatchWinner")
+  rankedMmr     Int                  @default(0)
+  rankedWins    Int                  @default(0)
+  rankedLosses  Int                  @default(0)
+  rankedDraws   Int                  @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -167,6 +181,12 @@ model GameMatch {
   endedAt        DateTime?
   winnerUserId   String?
   winner         User?              @relation("GameMatchWinner", fields: [winnerUserId], references: [id], onDelete: SetNull)
+  mode           MatchMode          @default(ONLINE)
+  endedBy        GameMatchEndReason?
+  player1MmrBefore Int?
+  player2MmrBefore Int?
+  player1MmrAfter  Int?
+  player2MmrAfter  Int?
   revision       Int                @default(0)
   phase          String             @default("idle")
   currentRoll    Int?
