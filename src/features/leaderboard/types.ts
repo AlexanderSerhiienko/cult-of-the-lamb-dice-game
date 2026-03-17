@@ -7,6 +7,7 @@ export type LeaderboardEntry = {
   losses: number;
   draws: number;
   totalScore: number;
+  bestScore: number;
   winRate: number;
 };
 

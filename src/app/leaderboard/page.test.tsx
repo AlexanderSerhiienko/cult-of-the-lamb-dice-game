@@ -21,6 +21,7 @@ describe("LeaderboardPage", () => {
               losses: 3,
               draws: 1,
               totalScore: 144,
+              bestScore: 24,
               winRate: 67,
             },
           ],
@@ -36,6 +37,7 @@ describe("LeaderboardPage", () => {
     expect(await screen.findByText("Alex")).toBeInTheDocument();
     expect(screen.getByText("8/3/1")).toBeInTheDocument();
     expect(screen.getByText("67%")).toBeInTheDocument();
+    expect(screen.getByText("24")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");
   });
 

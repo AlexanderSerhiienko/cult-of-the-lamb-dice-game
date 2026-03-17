@@ -11,6 +11,7 @@ type LeaderboardRow = {
   losses: number;
   draws: number;
   totalScore: number;
+  bestScore: number;
   winRate: number;
 };
 
@@ -32,6 +33,7 @@ export async function findLeaderboardSource(params: {
       SUM(CASE WHEN mr."outcome" = 'LOSE' THEN 1 ELSE 0 END)::int AS "losses",
       SUM(CASE WHEN mr."outcome" = 'DRAW' THEN 1 ELSE 0 END)::int AS "draws",
       SUM(mr."playerScore")::int AS "totalScore",
+      MAX(mr."playerScore")::int AS "bestScore",
       ROUND((100.0 * SUM(CASE WHEN mr."outcome" = 'WIN' THEN 1 ELSE 0 END) / COUNT(*))::numeric, 1)::float AS "winRate"
     FROM "MatchResult" mr
     JOIN "User" u ON u."id" = mr."userId"
@@ -50,6 +52,7 @@ export async function findLeaderboardSource(params: {
     losses: Number(row.losses),
     draws: Number(row.draws),
     totalScore: Number(row.totalScore),
+    bestScore: Number(row.bestScore),
     winRate: Number(row.winRate),
   }));
 }

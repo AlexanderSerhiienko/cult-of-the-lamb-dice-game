@@ -12,9 +12,9 @@ describe("Home page", () => {
       session: { status: "unauthenticated", data: null },
     });
 
-    expect(screen.getByRole("link", { name: "New game with bot" })).toHaveAttribute("href", "/game/bot");
+    expect(screen.getByRole("link", { name: "Play vs Bot" })).toHaveAttribute("href", "/game/bot");
     expect(screen.getByRole("link", { name: "Local PvP" })).toHaveAttribute("href", "/game/local");
-    expect(screen.getByRole("link", { name: "Online PvP" })).toHaveAttribute("href", "/online");
+    expect(screen.getByRole("button", { name: "Private PvP (sign in required)" })).toBeDisabled();
     expect(screen.getByRole("link", { name: "Leaderboard" })).toHaveAttribute("href", "/leaderboard");
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
     expect(screen.getByText("How to play")).toBeInTheDocument();
@@ -46,6 +46,7 @@ describe("Home page", () => {
       },
     });
 
+    expect(screen.getByRole("link", { name: "Private PvP" })).toHaveAttribute("href", "/online");
     expect(await screen.findByRole("link", { name: "Return to active match" })).toHaveAttribute(
       "href",
       "/online/room/room-1/play?matchId=match-1",

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 
 const isTestAuthEnabled = process.env.NEXT_PUBLIC_ENABLE_TEST_AUTH === "1";
 
-export default function TestAuthPage() {
+function TestAuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status } = useSession();
@@ -103,5 +103,19 @@ export default function TestAuthPage() {
 
       {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
     </section>
+  );
+}
+
+export default function TestAuthPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="mx-auto max-w-lg rounded-xl border border-slate-800 bg-slate-900/60 p-6">
+          <h1 className="text-xl font-semibold text-slate-100">Loading test auth…</h1>
+        </section>
+      }
+    >
+      <TestAuthPageContent />
+    </Suspense>
   );
 }

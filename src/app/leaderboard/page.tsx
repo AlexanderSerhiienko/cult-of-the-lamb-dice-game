@@ -50,7 +50,7 @@ export default function LeaderboardPage() {
     <section className="mx-auto max-w-3xl space-y-6 rounded-2xl border border-slate-700 bg-slate-900/70 p-6 shadow-xl shadow-slate-950/40 md:p-8">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-slate-100 md:text-4xl">Leaderboard</h1>
-        <p className="text-sm text-slate-300/85 md:text-base">Top players by tracked bot matches.</p>
+        <p className="text-sm text-slate-300/85 md:text-base">Top players in tracked bot matches.</p>
       </div>
 
       {loading ? <p className="text-sm text-slate-300">Loading...</p> : null}
@@ -66,7 +66,8 @@ export default function LeaderboardPage() {
                 <th className="px-4 py-3">Games</th>
                 <th className="px-4 py-3">W/L/D</th>
                 <th className="px-4 py-3">Win rate</th>
-                <th className="px-4 py-3">Score</th>
+                <th className="px-4 py-3">Total score</th>
+                <th className="px-4 py-3">Best score</th>
               </tr>
             </thead>
             <tbody>
@@ -80,6 +81,7 @@ export default function LeaderboardPage() {
                   </td>
                   <td className="px-4 py-3">{entry.winRate}%</td>
                   <td className="px-4 py-3">{entry.totalScore}</td>
+                  <td className="px-4 py-3">{entry.bestScore}</td>
                 </tr>
               ))}
             </tbody>
