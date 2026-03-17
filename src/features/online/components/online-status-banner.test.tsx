@@ -11,7 +11,6 @@ describe("OnlineStatusBanner", () => {
     { status: "loading", expectedText: "Connecting to realtime service..." },
     { status: "connecting", expectedText: "Connecting to realtime service..." },
     { status: "reconnecting", expectedText: "Connection interrupted. Retrying..." },
-    { status: "move_pending", expectedText: "Submitting move to server..." },
     { status: "opponent_left", expectedText: "Opponent left the match. You win immediately." },
     { status: "sync_error", expectedText: "Game state sync failed. Please try again." },
     { status: "service_unavailable", expectedText: "Realtime service is unavailable. Reconnecting..." },
@@ -31,5 +30,13 @@ describe("OnlineStatusBanner", () => {
     );
 
     expect(screen.getByText(/Waiting for reconnect: 19s/)).toBeInTheDocument();
+  });
+
+  it("does not render a banner for move pending", () => {
+    const { container } = renderWithProviders(
+      <OnlineStatusBanner status="move_pending" opponentDisconnectSecondsLeft={null} error={null} />,
+    );
+
+    expect(container).toBeEmptyDOMElement();
   });
 });

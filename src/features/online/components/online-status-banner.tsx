@@ -48,8 +48,6 @@ function getBannerMessage(params: OnlineStatusBannerProps): ReactNode | null {
           granted automatically.
         </>
       );
-    case "move_pending":
-      return "Submitting move to server...";
     case "loading":
     case "connecting":
       return "Connecting to realtime service...";
@@ -62,7 +60,9 @@ function getBannerMessage(params: OnlineStatusBannerProps): ReactNode | null {
 
 function Banner(props: { tone: "neutral" | "amber" | "rose" | "emerald"; children: ReactNode }) {
   return (
-    <div className={`mb-3 rounded-md border px-3 py-2 text-sm ${BANNER_TONE_CLASS[props.tone]}`}>
+    <div
+      className={`w-full max-w-2xl rounded-md border px-3 py-2 text-sm shadow-lg shadow-slate-950/40 ${BANNER_TONE_CLASS[props.tone]}`}
+    >
       {props.children}
     </div>
   );

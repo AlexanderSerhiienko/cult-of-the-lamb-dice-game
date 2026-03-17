@@ -117,8 +117,12 @@ export function OnlineGameContent({
   }
 
   return (
-    <section className="h-[calc(100vh-7.5rem)]">
-      {statusBanner}
+    <section className="relative h-[calc(100vh-7.5rem)]">
+      {statusBanner ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-4 pt-2">
+          {statusBanner}
+        </div>
+      ) : null}
       <div className="grid h-full grid-cols-[220px_minmax(0,1fr)_220px] gap-5 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         <GameSideRail
           scoreLabel="Your score"
