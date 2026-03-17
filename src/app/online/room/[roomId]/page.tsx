@@ -5,6 +5,14 @@ import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchRoom, leaveRoom, startMatch, type RoomApiSnapshot } from "@/features/online/api";
 
+const LOBBY_COPY_STATE = {
+  IDLE: "idle",
+  COPIED: "copied",
+  FAILED: "failed",
+} as const;
+
+type LobbyCopyState = (typeof LOBBY_COPY_STATE)[keyof typeof LOBBY_COPY_STATE];
+
 function formatLobbyMemberLabel(member: RoomApiSnapshot["members"][number]) {
   const memberName = member.name ?? member.email ?? member.userId;
   return member.role === "HOST" ? `${memberName} (host)` : memberName;
@@ -18,7 +26,7 @@ export default function OnlineRoomLobbyPage() {
   const [error, setError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [copyState, setCopyState] = useState<LobbyCopyState>(LOBBY_COPY_STATE.IDLE);
   const hasNavigatedToMatchRef = useRef(false);
   const roomId = params.roomId;
 
@@ -60,10 +68,10 @@ export default function OnlineRoomLobbyPage() {
   const isHost = userId !== null && room?.room.hostId === userId;
   const isMatchStarting = Boolean(room?.currentMatchId);
   const canStart = Boolean(isHost && activeMembers.length === 2 && !isStarting && !isLeaving && !isMatchStarting);
-  const copyButtonLabel = copyState === "copied" ? "Copied" : "Copy code";
+  const copyButtonLabel = copyState === LOBBY_COPY_STATE.COPIED ? "Copied" : "Copy code";
   const startButtonLabel = isStarting || isMatchStarting ? "Starting..." : "Start match";
   const leaveDisabled = isLeaving || isStarting || isMatchStarting;
-  const showCopyError = copyState === "failed";
+  const showCopyError = copyState === LOBBY_COPY_STATE.FAILED;
   const showMatchStartingNotice = isMatchStarting;
 
   useEffect(() => {
@@ -112,12 +120,12 @@ export default function OnlineRoomLobbyPage() {
 
     try {
       await navigator.clipboard.writeText(room.room.code);
-      setCopyState("copied");
+      setCopyState(LOBBY_COPY_STATE.COPIED);
       window.setTimeout(() => {
-        setCopyState("idle");
+        setCopyState(LOBBY_COPY_STATE.IDLE);
       }, 1500);
     } catch {
-      setCopyState("failed");
+      setCopyState(LOBBY_COPY_STATE.FAILED);
     }
   }
 

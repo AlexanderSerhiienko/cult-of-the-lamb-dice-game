@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { PEER_CONNECTION_REASON } from "@/features/online/socket-events";
 import type { PeerConnectionStateEvent } from "@/features/online/socket-events";
-import type { OpponentConnectionState } from "@/features/online/types";
+import { OPPONENT_CONNECTION_STATE, type OpponentConnectionState } from "@/features/online/types";
 
 export function useOpponentConnectionState(userId: string) {
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [opponentDisconnectDeadlineMs, setOpponentDisconnectDeadlineMs] = useState<number | null>(null);
   const [opponentConnectionState, setOpponentConnectionState] =
-    useState<OpponentConnectionState>("connected");
+    useState<OpponentConnectionState>(OPPONENT_CONNECTION_STATE.CONNECTED);
 
   const resetOpponentConnectionState = useCallback(() => {
     setOpponentDisconnected(false);
     setOpponentDisconnectDeadlineMs(null);
-    setOpponentConnectionState("connected");
+    setOpponentConnectionState(OPPONENT_CONNECTION_STATE.CONNECTED);
   }, []);
 
   const handlePeerConnectionState = useCallback(
@@ -27,15 +28,15 @@ export function useOpponentConnectionState(userId: string) {
         return;
       }
 
-      if (payload.reason === "left_match") {
+      if (payload.reason === PEER_CONNECTION_REASON.LEFT_MATCH) {
         setOpponentDisconnected(false);
         setOpponentDisconnectDeadlineMs(null);
-        setOpponentConnectionState("left_match");
+        setOpponentConnectionState(OPPONENT_CONNECTION_STATE.LEFT_MATCH);
         return;
       }
 
       setOpponentDisconnected(true);
-      setOpponentConnectionState("disconnected");
+      setOpponentConnectionState(OPPONENT_CONNECTION_STATE.DISCONNECTED);
       setOpponentDisconnectDeadlineMs(
         typeof payload.graceEndsAt === "number" ? payload.graceEndsAt : Date.now() + 60_000,
       );

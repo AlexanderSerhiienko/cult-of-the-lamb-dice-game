@@ -1,28 +1,42 @@
 import type { OnlineAuthoritativeSnapshot } from "@/server/rooms/authoritative-engine";
+import {
+  REALTIME_TRANSPORT_STATE,
+  type RealtimeTransportState,
+} from "@/features/online/hooks/use-realtime-transport";
 
 export type OnlineSnapshot = OnlineAuthoritativeSnapshot;
 
-export type OpponentConnectionState = "connected" | "disconnected" | "left_match";
+export const OPPONENT_CONNECTION_STATE = {
+  CONNECTED: "connected",
+  DISCONNECTED: "disconnected",
+  LEFT_MATCH: "left_match",
+} as const;
 
-export type OnlineUiStatus =
-  | "loading"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "move_pending"
-  | "opponent_disconnected"
-  | "opponent_left"
-  | "sync_error"
-  | "service_unavailable";
+export type OpponentConnectionState =
+  (typeof OPPONENT_CONNECTION_STATE)[keyof typeof OPPONENT_CONNECTION_STATE];
+
+export const ONLINE_UI_STATUS = {
+  LOADING: "loading",
+  CONNECTING: "connecting",
+  CONNECTED: "connected",
+  RECONNECTING: "reconnecting",
+  MOVE_PENDING: "move_pending",
+  OPPONENT_DISCONNECTED: "opponent_disconnected",
+  OPPONENT_LEFT: "opponent_left",
+  SYNC_ERROR: "sync_error",
+  SERVICE_UNAVAILABLE: "service_unavailable",
+} as const;
+
+export type OnlineUiStatus = (typeof ONLINE_UI_STATUS)[keyof typeof ONLINE_UI_STATUS];
 
 const BLOCKED_STATUSES = new Set<OnlineUiStatus>([
-  "loading",
-  "connecting",
-  "reconnecting",
-  "move_pending",
-  "sync_error",
-  "service_unavailable",
-  "opponent_left",
+  ONLINE_UI_STATUS.LOADING,
+  ONLINE_UI_STATUS.CONNECTING,
+  ONLINE_UI_STATUS.RECONNECTING,
+  ONLINE_UI_STATUS.MOVE_PENDING,
+  ONLINE_UI_STATUS.SYNC_ERROR,
+  ONLINE_UI_STATUS.SERVICE_UNAVAILABLE,
+  ONLINE_UI_STATUS.OPPONENT_LEFT,
 ]);
 
 export function isOnlineInteractionBlocked(status: OnlineUiStatus): boolean {
@@ -63,57 +77,62 @@ export function describeMoveRejectionReason(reason: string): string {
 }
 
 export function deriveOnlineUiStatus(params: {
-  transportState: "idle" | "loading_token" | "connecting" | "connected" | "reconnecting" | "disconnected";
+  transportState: RealtimeTransportState;
   mySeat: 1 | 2 | null;
   movePending: boolean;
   opponentConnectionState: OpponentConnectionState;
   error: string | null;
 }): OnlineUiStatus {
   const { transportState, mySeat, movePending, opponentConnectionState, error } = params;
-  const isTransportUnavailable = transportState === "reconnecting" || transportState === "disconnected";
+  const isTransportUnavailable =
+    transportState === REALTIME_TRANSPORT_STATE.RECONNECTING ||
+    transportState === REALTIME_TRANSPORT_STATE.DISCONNECTED;
   const isSeatUnknown = !mySeat;
   const hasRecoverableError = Boolean(error) && isTransportUnavailable;
   const hasFatalSyncError = Boolean(error) && !isTransportUnavailable;
 
-  if (opponentConnectionState === "left_match") {
-    return "opponent_left";
+  if (opponentConnectionState === OPPONENT_CONNECTION_STATE.LEFT_MATCH) {
+    return ONLINE_UI_STATUS.OPPONENT_LEFT;
   }
 
-  if (transportState === "loading_token" || transportState === "idle") {
-    return "loading";
+  if (
+    transportState === REALTIME_TRANSPORT_STATE.LOADING_TOKEN ||
+    transportState === REALTIME_TRANSPORT_STATE.IDLE
+  ) {
+    return ONLINE_UI_STATUS.LOADING;
   }
 
-  if (transportState === "connecting") {
-    return "connecting";
+  if (transportState === REALTIME_TRANSPORT_STATE.CONNECTING) {
+    return ONLINE_UI_STATUS.CONNECTING;
   }
 
   if (isSeatUnknown) {
     if (isTransportUnavailable) {
-      return hasRecoverableError ? "service_unavailable" : "reconnecting";
+      return hasRecoverableError ? ONLINE_UI_STATUS.SERVICE_UNAVAILABLE : ONLINE_UI_STATUS.RECONNECTING;
     }
 
-    return "loading";
+    return ONLINE_UI_STATUS.LOADING;
   }
 
   if (hasRecoverableError) {
-    return "service_unavailable";
+    return ONLINE_UI_STATUS.SERVICE_UNAVAILABLE;
   }
 
   if (hasFatalSyncError) {
-    return "sync_error";
+    return ONLINE_UI_STATUS.SYNC_ERROR;
   }
 
-  if (opponentConnectionState === "disconnected") {
-    return "opponent_disconnected";
+  if (opponentConnectionState === OPPONENT_CONNECTION_STATE.DISCONNECTED) {
+    return ONLINE_UI_STATUS.OPPONENT_DISCONNECTED;
   }
 
   if (movePending) {
-    return "move_pending";
+    return ONLINE_UI_STATUS.MOVE_PENDING;
   }
 
   if (isTransportUnavailable) {
-    return "reconnecting";
+    return ONLINE_UI_STATUS.RECONNECTING;
   }
 
-  return "connected";
+  return ONLINE_UI_STATUS.CONNECTED;
 }

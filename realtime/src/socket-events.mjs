@@ -12,3 +12,11 @@ export const ONLINE_SOCKET_EVENT = {
   ERROR: "error",
 };
 
+export const PEER_CONNECTION_REASON = {
+  DISCONNECT: "disconnect",
+  LEFT_MATCH: "left_match",
+};
+
+export const CONNECTION_STATE_STATUS = {
+  DISCONNECTED: "disconnected",
+};

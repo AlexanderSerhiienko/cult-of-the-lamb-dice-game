@@ -8,6 +8,7 @@ import {
   PLAYER,
 } from "@/features/game/core/types";
 import type { Board } from "@/features/game/core/types";
+import { MATCH_REPORT_STATUS } from "@/features/game/store/types/game-store";
 import { useGameStore } from "./use-game-store";
 
 const BOT_DIFFICULTY_STORAGE_KEY = "knucklebones.botDifficulty";
@@ -220,7 +221,7 @@ describe("useGameStore", () => {
     const state = useGameStore.getState();
 
     expect(state.matchId).not.toBeNull();
-    expect(state.reportStatus).toBe("idle");
+    expect(state.reportStatus).toBe(MATCH_REPORT_STATUS.IDLE);
     expect(state.reportedAt).toBeNull();
     expect(state.reportError).toBeNull();
   });
@@ -237,7 +238,7 @@ describe("useGameStore", () => {
     const state = useGameStore.getState();
 
     expect(state.phase).toBe(GAME_PHASE.FINISHED);
-    expect(state.reportStatus).toBe("pending");
+    expect(state.reportStatus).toBe(MATCH_REPORT_STATUS.PENDING);
   });
 
   it("keeps idle report status on finish in local mode", () => {
@@ -252,17 +253,17 @@ describe("useGameStore", () => {
     const state = useGameStore.getState();
 
     expect(state.phase).toBe(GAME_PHASE.FINISHED);
-    expect(state.reportStatus).toBe("idle");
+    expect(state.reportStatus).toBe(MATCH_REPORT_STATUS.IDLE);
   });
 
   it("updates report status metadata", () => {
-    useGameStore.getState().setReportStatus("sent", {
+    useGameStore.getState().setReportStatus(MATCH_REPORT_STATUS.SENT, {
       reportedAt: 123,
       reportError: null,
     });
     const state = useGameStore.getState();
 
-    expect(state.reportStatus).toBe("sent");
+    expect(state.reportStatus).toBe(MATCH_REPORT_STATUS.SENT);
     expect(state.reportedAt).toBe(123);
     expect(state.reportError).toBeNull();
   });

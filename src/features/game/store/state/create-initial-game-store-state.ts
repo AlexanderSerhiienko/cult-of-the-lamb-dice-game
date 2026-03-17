@@ -1,7 +1,7 @@
 import { createInitialBoards } from "@/features/game/core/rules";
 import { GAME_PHASE, GAME_STATUS, PLAYER } from "@/features/game/core/types";
 import type { BotDifficulty, GameMode } from "@/features/game/core/types";
-import type { GameStoreState } from "@/features/game/store/types/game-store";
+import { MATCH_REPORT_STATUS, type GameStoreState } from "@/features/game/store/types/game-store";
 
 export function createInitialGameStoreState(params: {
   botDifficulty: BotDifficulty;
@@ -25,7 +25,7 @@ export function createInitialGameStoreState(params: {
     soundEnabled,
     gameMode,
     matchId: null,
-    reportStatus: "idle",
+    reportStatus: MATCH_REPORT_STATUS.IDLE,
     reportedAt: null,
     reportError: null,
     onlineRoomId: null,

@@ -5,7 +5,7 @@ import { LatencyMetrics } from "./metrics/latency-metrics.mjs";
 import { createConsoleTelemetrySink } from "./observability/telemetry.mjs";
 import { verifyRoomToken as defaultVerifyRoomToken } from "./auth/verify-token.mjs";
 import { RoomManager } from "./rooms/room-manager.mjs";
-import { ONLINE_SOCKET_EVENT } from "./socket-events.mjs";
+import { CONNECTION_STATE_STATUS, ONLINE_SOCKET_EVENT, PEER_CONNECTION_REASON } from "./socket-events.mjs";
 
 const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
 const DEFAULT_FETCH_RETRIES = 2;
@@ -188,7 +188,7 @@ function withDisconnectedConnectionState(snapshot, userId, disconnectedAt, recon
     connectionStates: {
       ...(snapshot.connectionStates || {}),
       [userId]: {
-        status: "disconnected",
+        status: CONNECTION_STATE_STATUS.DISCONNECTED,
         disconnectedAt,
         reconnectDeadlineMs,
       },
@@ -443,7 +443,7 @@ export function createRealtimeServer(options = {}) {
       }
 
       const reconnectState = snapshot.connectionStates && snapshot.connectionStates[userId];
-      if (reconnectState?.status === "disconnected") {
+      if (reconnectState?.status === CONNECTION_STATE_STATUS.DISCONNECTED) {
         const reconnectedSnapshot = withConnectedConnectionState(snapshot, userId);
         try {
           await fetchers.persistMatchState({
@@ -694,7 +694,7 @@ export function createRealtimeServer(options = {}) {
           roomId,
           userId,
           connected: false,
-          reason: "left_match",
+          reason: PEER_CONNECTION_REASON.LEFT_MATCH,
           at: disconnectedAt,
           disconnectedAt,
         });
@@ -740,7 +740,7 @@ export function createRealtimeServer(options = {}) {
         roomId,
         userId,
         connected: false,
-        reason: "disconnect",
+        reason: PEER_CONNECTION_REASON.DISCONNECT,
         at: disconnectedAt,
         disconnectedAt,
         graceEndsAt,

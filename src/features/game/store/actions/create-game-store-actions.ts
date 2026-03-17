@@ -15,7 +15,7 @@ import type { GameStoreDependencies } from "@/features/game/store/game-store-dep
 import { createInitialGameStoreState } from "@/features/game/store/state/create-initial-game-store-state";
 import { writeBotDifficulty } from "@/features/game/store/storage/bot-difficulty-storage";
 import { writeSoundEnabled } from "@/features/game/store/storage/sound-storage";
-import type { GameStore, GameStoreActions } from "@/features/game/store/types/game-store";
+import { MATCH_REPORT_STATUS, type GameStore, type GameStoreActions } from "@/features/game/store/types/game-store";
 
 type SetState = StoreApi<GameStore>["setState"];
 type GetState = StoreApi<GameStore>["getState"];
@@ -64,7 +64,7 @@ function createStartedMatchState(params: {
     status: GAME_STATUS.IN_PROGRESS,
     winner: null,
     matchId: params.deps.createMatchId(),
-    reportStatus: "idle" as const,
+    reportStatus: MATCH_REPORT_STATUS.IDLE,
     reportedAt: null,
     reportError: null,
   };
@@ -168,7 +168,7 @@ function resolveReportStatusForOnlineSync(params: {
   const { phase, gameMode, currentReportStatus } = params;
 
   if (phase === GAME_PHASE.FINISHED && gameMode === GAME_MODE.ONLINE_PRIVATE) {
-    return "pending" as const;
+    return MATCH_REPORT_STATUS.PENDING;
   }
 
   return currentReportStatus;
@@ -364,7 +364,7 @@ export function createGameStoreActions(params: {
         winner,
         currentRoll: null,
         interactionLocked: true,
-        reportStatus: state.gameMode === GAME_MODE.PVB ? "pending" : "idle",
+        reportStatus: state.gameMode === GAME_MODE.PVB ? MATCH_REPORT_STATUS.PENDING : MATCH_REPORT_STATUS.IDLE,
         reportedAt: null,
         reportError: null,
       });

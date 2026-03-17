@@ -15,6 +15,11 @@ export const ONLINE_SOCKET_EVENT = {
   ERROR: "error",
 } as const;
 
+export const PEER_CONNECTION_REASON = {
+  DISCONNECT: "disconnect",
+  LEFT_MATCH: "left_match",
+} as const;
+
 export type MoveSubmitEvent = {
   roomId: string;
   matchId: string;
@@ -76,7 +81,7 @@ export type PeerConnectionStateEvent = {
   userId: string;
   connected: boolean;
   at: number;
-  reason?: "disconnect" | "left_match";
+  reason?: (typeof PEER_CONNECTION_REASON)[keyof typeof PEER_CONNECTION_REASON];
   disconnectedAt?: number;
   graceEndsAt?: number;
 };

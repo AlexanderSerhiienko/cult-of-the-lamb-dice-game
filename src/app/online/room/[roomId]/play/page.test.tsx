@@ -3,8 +3,9 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import OnlinePlayPage from "@/app/online/room/[roomId]/play/page";
+import { GAME_MODE, GAME_PHASE, GAME_STATUS } from "@/features/game/core/types";
+import { ONLINE_UI_STATUS } from "@/features/online/types";
 import { renderWithProviders } from "@/test/render";
-
 const mockUseOnlineRoomSocket = vi.fn();
 
 vi.mock("@/features/online/hooks/use-online-room-socket", () => ({
@@ -14,7 +15,7 @@ vi.mock("@/features/online/hooks/use-online-room-socket", () => ({
 describe("OnlinePlayPage", () => {
   it("renders loading state before authenticated match can run", () => {
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "loading",
+      status: ONLINE_UI_STATUS.LOADING,
       error: null,
       opponentDisconnectDeadlineMs: null,
       sendMove: vi.fn(),
@@ -32,7 +33,7 @@ describe("OnlinePlayPage", () => {
 
   it("renders banner while waiting for seat resolution", () => {
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "connecting",
+      status: ONLINE_UI_STATUS.CONNECTING,
       error: null,
       opponentDisconnectDeadlineMs: null,
       sendMove: vi.fn(),
@@ -63,7 +64,7 @@ describe("OnlinePlayPage", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-17T12:00:00.000Z"));
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "opponent_disconnected",
+      status: ONLINE_UI_STATUS.OPPONENT_DISCONNECTED,
       error: null,
       opponentDisconnectDeadlineMs: Date.now() + 5_000,
       sendMove: vi.fn(),
@@ -93,7 +94,7 @@ describe("OnlinePlayPage", () => {
 
   it("renders service unavailable state from socket errors", () => {
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "service_unavailable",
+      status: ONLINE_UI_STATUS.SERVICE_UNAVAILABLE,
       error: "Realtime service is unavailable. Reconnecting...",
       opponentDisconnectDeadlineMs: null,
       sendMove: vi.fn(),
@@ -123,7 +124,7 @@ describe("OnlinePlayPage", () => {
 
   it("renders sync error state from socket errors", () => {
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "sync_error",
+      status: ONLINE_UI_STATUS.SYNC_ERROR,
       error: "Game state updated. Please try your move again.",
       opponentDisconnectDeadlineMs: null,
       sendMove: vi.fn(),
@@ -153,7 +154,7 @@ describe("OnlinePlayPage", () => {
 
   it("renders opponent-left win state", () => {
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "opponent_left",
+      status: ONLINE_UI_STATUS.OPPONENT_LEFT,
       error: null,
       opponentDisconnectDeadlineMs: null,
       sendMove: vi.fn(),
@@ -184,7 +185,7 @@ describe("OnlinePlayPage", () => {
   it("blocks board interaction while a move is pending", async () => {
     const sendMove = vi.fn();
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "move_pending",
+      status: ONLINE_UI_STATUS.MOVE_PENDING,
       error: null,
       opponentDisconnectDeadlineMs: null,
       sendMove,
@@ -203,9 +204,9 @@ describe("OnlinePlayPage", () => {
       },
       storeOptions: {
         initialState: {
-          gameMode: "online_private",
-          phase: "player_turn",
-          status: "in_progress",
+          gameMode: GAME_MODE.ONLINE_PRIVATE,
+          phase: GAME_PHASE.PLAYER_TURN,
+          status: GAME_STATUS.IN_PROGRESS,
           currentRoll: 4,
           onlineMySeat: 1,
           onlineTurnUserId: "u1",
@@ -224,7 +225,7 @@ describe("OnlinePlayPage", () => {
   it("allows submitting a move through the socket hook on a valid turn", async () => {
     const sendMove = vi.fn();
     mockUseOnlineRoomSocket.mockReturnValue({
-      status: "connected",
+      status: ONLINE_UI_STATUS.CONNECTED,
       error: null,
       opponentDisconnectDeadlineMs: null,
       sendMove,
@@ -243,9 +244,9 @@ describe("OnlinePlayPage", () => {
       },
       storeOptions: {
         initialState: {
-          gameMode: "online_private",
-          phase: "player_turn",
-          status: "in_progress",
+          gameMode: GAME_MODE.ONLINE_PRIVATE,
+          phase: GAME_PHASE.PLAYER_TURN,
+          status: GAME_STATUS.IN_PROGRESS,
           currentRoll: 4,
           onlineMySeat: 1,
           onlineTurnUserId: "u1",

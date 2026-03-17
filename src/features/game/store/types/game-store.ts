@@ -10,6 +10,16 @@ import type {
   Turn,
 } from "@/features/game/core/types";
 
+export const MATCH_REPORT_STATUS = {
+  IDLE: "idle",
+  PENDING: "pending",
+  SENDING: "sending",
+  SENT: "sent",
+  FAILED: "failed",
+} as const;
+
+export type MatchReportStatus = (typeof MATCH_REPORT_STATUS)[keyof typeof MATCH_REPORT_STATUS];
+
 export type SeatScores = {
   seat1: number;
   seat2: number;
@@ -29,7 +39,7 @@ export type GameStoreState = {
   soundEnabled: boolean;
   gameMode: GameMode;
   matchId: string | null;
-  reportStatus: "idle" | "pending" | "sending" | "sent" | "failed";
+  reportStatus: MatchReportStatus;
   reportedAt: number | null;
   reportError: string | null;
   onlineRoomId: string | null;

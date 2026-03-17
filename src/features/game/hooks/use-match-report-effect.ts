@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { GAME_MODE, GAME_PHASE, GAME_RESULT, PLAYER } from "@/features/game/core/types";
+import { MATCH_REPORT_STATUS } from "@/features/game/store/types/game-store";
 import { useGameStore } from "@/features/game/store/use-game-store";
 
 function mapWinnerToOutcome(winner: ReturnType<typeof useGameStore.getState>["winner"]) {
@@ -32,7 +33,7 @@ export function useMatchReportEffect() {
   const setReportStatus = useGameStore((state) => state.setReportStatus);
 
   useEffect(() => {
-    if (phase !== GAME_PHASE.FINISHED || gameMode !== GAME_MODE.PVB || reportStatus !== "pending") {
+    if (phase !== GAME_PHASE.FINISHED || gameMode !== GAME_MODE.PVB || reportStatus !== MATCH_REPORT_STATUS.PENDING) {
       return;
     }
 
@@ -41,22 +42,22 @@ export function useMatchReportEffect() {
     }
 
     if (authStatus !== "authenticated") {
-      setReportStatus("idle");
+      setReportStatus(MATCH_REPORT_STATUS.IDLE);
       return;
     }
 
     if (!matchId) {
-      setReportStatus("failed", { reportError: "Missing match id" });
+      setReportStatus(MATCH_REPORT_STATUS.FAILED, { reportError: "Missing match id" });
       return;
     }
 
     const outcome = mapWinnerToOutcome(winner);
     if (!outcome) {
-      setReportStatus("failed", { reportError: "Missing match outcome" });
+      setReportStatus(MATCH_REPORT_STATUS.FAILED, { reportError: "Missing match outcome" });
       return;
     }
 
-    setReportStatus("sending");
+    setReportStatus(MATCH_REPORT_STATUS.SENDING);
 
     void fetch("/api/matches", {
       method: "POST",
@@ -77,10 +78,10 @@ export function useMatchReportEffect() {
           throw new Error(data?.error ?? "Failed to report match");
         }
 
-        setReportStatus("sent", { reportedAt: Date.now() });
+        setReportStatus(MATCH_REPORT_STATUS.SENT, { reportedAt: Date.now() });
       })
       .catch((error: unknown) => {
-        setReportStatus("failed", {
+        setReportStatus(MATCH_REPORT_STATUS.FAILED, {
           reportError: error instanceof Error ? error.message : "Failed to report match",
         });
       });

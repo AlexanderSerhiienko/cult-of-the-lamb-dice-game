@@ -2,7 +2,7 @@ import { createServer as createNetServer } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { io as createClient } from "socket.io-client";
 import { createRealtimeServer } from "./create-server.mjs";
-import { ONLINE_SOCKET_EVENT } from "./socket-events.mjs";
+import { ONLINE_SOCKET_EVENT, PEER_CONNECTION_REASON } from "./socket-events.mjs";
 
 const canBindTestPort = await new Promise((resolve) => {
   const server = createNetServer();
@@ -140,7 +140,7 @@ describe("createRealtimeServer", () => {
     const disconnectedEvent = waitForEvent(client2, ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE);
     client1.disconnect();
     const disconnectedPayload = await disconnectedEvent;
-    expect(disconnectedPayload.reason).toBe("disconnect");
+    expect(disconnectedPayload.reason).toBe(PEER_CONNECTION_REASON.DISCONNECT);
 
     const reconnectedClient1 = createClient(url, {
       transports: ["websocket"],
@@ -250,7 +250,7 @@ describe("createRealtimeServer", () => {
     const peerStatePayload = await peerStateEvent;
     const finishedPayload = await finishedEvent;
 
-    expect(peerStatePayload.reason).toBe("left_match");
+    expect(peerStatePayload.reason).toBe(PEER_CONNECTION_REASON.LEFT_MATCH);
     expect(finishedPayload.snapshot.winner).toBe("seat2");
     expect(snapshotStore.current.winner).toBe("seat2");
   });

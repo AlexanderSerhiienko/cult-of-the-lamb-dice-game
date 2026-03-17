@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { OnlineUiStatus } from "@/features/online/types";
+import { ONLINE_UI_STATUS, type OnlineUiStatus } from "@/features/online/types";
 
 type OnlineStatusBannerProps = {
   status: OnlineUiStatus;
@@ -18,13 +18,13 @@ const BANNER_TONE_CLASS = {
 
 function getBannerTone(status: OnlineUiStatus): keyof typeof BANNER_TONE_CLASS {
   switch (status) {
-    case "opponent_left":
+    case ONLINE_UI_STATUS.OPPONENT_LEFT:
       return "emerald";
-    case "opponent_disconnected":
-    case "reconnecting":
+    case ONLINE_UI_STATUS.OPPONENT_DISCONNECTED:
+    case ONLINE_UI_STATUS.RECONNECTING:
       return "amber";
-    case "sync_error":
-    case "service_unavailable":
+    case ONLINE_UI_STATUS.SYNC_ERROR:
+    case ONLINE_UI_STATUS.SERVICE_UNAVAILABLE:
       return "rose";
     default:
       return "neutral";
@@ -35,23 +35,23 @@ function getBannerMessage(params: OnlineStatusBannerProps): ReactNode | null {
   const { status, error, opponentDisconnectSecondsLeft } = params;
 
   switch (status) {
-    case "opponent_left":
+    case ONLINE_UI_STATUS.OPPONENT_LEFT:
       return "Opponent left the match. You win immediately.";
-    case "sync_error":
+    case ONLINE_UI_STATUS.SYNC_ERROR:
       return error ?? "Game state sync failed. Please try again.";
-    case "service_unavailable":
+    case ONLINE_UI_STATUS.SERVICE_UNAVAILABLE:
       return error ?? "Realtime service is unavailable. Reconnecting...";
-    case "opponent_disconnected":
+    case ONLINE_UI_STATUS.OPPONENT_DISCONNECTED:
       return (
         <>
           Opponent disconnected. Waiting for reconnect: {opponentDisconnectSecondsLeft ?? 0}s. After timeout, win is
           granted automatically.
         </>
       );
-    case "loading":
-    case "connecting":
+    case ONLINE_UI_STATUS.LOADING:
+    case ONLINE_UI_STATUS.CONNECTING:
       return "Connecting to realtime service...";
-    case "reconnecting":
+    case ONLINE_UI_STATUS.RECONNECTING:
       return "Connection interrupted. Retrying...";
     default:
       return null;
