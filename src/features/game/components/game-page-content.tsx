@@ -15,22 +15,22 @@ type GamePageContentProps = {
 
 export function GamePageContent({ mode }: GamePageContentProps) {
   const {
-    playerBoard,
-    botBoard,
-    scores,
+    seat1Board,
+    seat2Board,
+    seatScores,
     phase,
     gameFinished,
-    playerCurrentDie,
-    botCurrentDie,
+    seat1CurrentDie,
+    seat2CurrentDie,
     resultText,
-    playerAvailableColumns,
-    botAvailableColumns,
-    playerScoreLabel,
-    playerDieLabel,
-    opponentScoreLabel,
-    opponentDieLabel,
-    playerBoardTitle,
-    opponentBoardTitle,
+    seat1AvailableColumns,
+    seat2AvailableColumns,
+    seat1ScoreLabel,
+    seat1DieLabel,
+    seat2ScoreLabel,
+    seat2DieLabel,
+    seat1BoardTitle,
+    seat2BoardTitle,
     rematch,
     placePlayerDie,
     botMove,
@@ -43,32 +43,32 @@ export function GamePageContent({ mode }: GamePageContentProps) {
     <section className="h-[calc(100vh-7.5rem)]">
       <div className="grid h-full grid-cols-[220px_minmax(0,1fr)_220px] gap-5 lg:grid-cols-[260px_minmax(0,1fr)_260px]">
         <GameSideRail
-          scoreLabel={playerScoreLabel}
-          scoreValue={scores.player}
+          scoreLabel={seat1ScoreLabel}
+          scoreValue={seatScores.seat1}
           scoreTone={PLAYER.PLAYER}
-          dieLabel={playerDieLabel}
-          dieValue={playerCurrentDie}
+          dieLabel={seat1DieLabel}
+          dieValue={seat1CurrentDie}
           isActiveTurn={phase === GAME_PHASE.PLAYER_TURN}
         />
 
         <BoardsStack
-          botBoard={botBoard}
-          playerBoard={playerBoard}
+          upperBoard={seat2Board}
+          lowerBoard={seat1Board}
           phase={phase}
-          botBoardTitle={opponentBoardTitle}
-          playerBoardTitle={playerBoardTitle}
-          botAvailableColumns={botAvailableColumns}
-          playerAvailableColumns={playerAvailableColumns}
+          upperBoardTitle={seat2BoardTitle}
+          lowerBoardTitle={seat1BoardTitle}
+          upperAvailableColumns={seat2AvailableColumns}
+          lowerAvailableColumns={seat1AvailableColumns}
           onSelectColumn={placePlayerDie}
-          botBoardSelectable={mode === GAME_MODE.LOCAL_PVP}
+          upperBoardSelectable={mode === GAME_MODE.LOCAL_PVP}
         />
 
         <GameSideRail
-          scoreLabel={opponentScoreLabel}
-          scoreValue={scores.bot}
+          scoreLabel={seat2ScoreLabel}
+          scoreValue={seatScores.seat2}
           scoreTone={PLAYER.BOT}
-          dieLabel={opponentDieLabel}
-          dieValue={botCurrentDie}
+          dieLabel={seat2DieLabel}
+          dieValue={seat2CurrentDie}
           isActiveTurn={phase === GAME_PHASE.BOT_TURN}
         />
       </div>
@@ -77,8 +77,8 @@ export function GamePageContent({ mode }: GamePageContentProps) {
         <GameResultModal
           isOpen
           resultText={resultText}
-          playerScore={scores.player}
-          botScore={scores.bot}
+          playerScore={seatScores.seat1}
+          botScore={seatScores.seat2}
           onRematch={rematch}
           onClose={rematch}
         />

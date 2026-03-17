@@ -1,5 +1,5 @@
-import { RoomStatus } from "@prisma/client";
-import { GAME_RESULT, PLAYER } from "@/features/game/core/types";
+import { Prisma, RoomStatus } from "@prisma/client";
+import { GAME_RESULT } from "@/features/game/core/types";
 import { upsertMatchResultForUser } from "@/server/matches/repository";
 import { MATCH_OUTCOME, TRACKED_MATCH_MODE } from "@/server/matches/types";
 import {
@@ -56,6 +56,24 @@ function getActiveMembersCount(snapshot: RoomSnapshot): number {
   return snapshot.members.filter((member) => member.leftAt === null).length;
 }
 
+function isRoomCodeCollision(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false;
+  }
+
+  if (error.code !== "P2002") {
+    return false;
+  }
+
+  const target = Array.isArray(error.meta?.target)
+    ? error.meta.target
+    : typeof error.meta?.target === "string"
+      ? [error.meta.target]
+      : [];
+
+  return target.some((value) => String(value).includes("code"));
+}
+
 export async function createRoomForUser(userId: string): Promise<RoomSnapshot> {
   let attempts = 0;
   while (attempts < 5) {
@@ -65,8 +83,17 @@ export async function createRoomForUser(userId: string): Promise<RoomSnapshot> {
       const room = await createPrivateRoom({ hostId: userId, code });
       logRoomTransition("create", { userId, roomId: room.room.id, code: room.room.code });
       return room;
-    } catch {
-      continue;
+    } catch (error) {
+      if (isRoomCodeCollision(error)) {
+        continue;
+      }
+
+      console.error("[rooms] create_failed", {
+        userId,
+        attempt: attempts,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      throw new RoomServiceError("Failed to create room", 500);
     }
   }
 
@@ -117,10 +144,6 @@ export async function leaveRoom(input: LeaveRoomInput): Promise<RoomSnapshot> {
   const updated = await getRoomSnapshotById(input.roomId);
   if (!updated) {
     throw new RoomServiceError("Room not found", 404);
-  }
-
-  if (getActiveMembersCount(updated) === 0) {
-    await Promise.resolve();
   }
 
   logRoomTransition("leave", { userId: input.userId, roomId: input.roomId });
@@ -175,10 +198,10 @@ export async function startRoomMatch(input: StartRoomMatchInput): Promise<{
 }
 
 function resolveWinnerUserId(snapshot: OnlineAuthoritativeSnapshot): string | null {
-  if (snapshot.winner === PLAYER.PLAYER) {
+  if (snapshot.winner === "seat1") {
     return snapshot.players.seat1;
   }
-  if (snapshot.winner === PLAYER.BOT) {
+  if (snapshot.winner === "seat2") {
     return snapshot.players.seat2;
   }
   return null;
@@ -194,10 +217,10 @@ function mapOutcomeForUser(params: {
   if (winner === GAME_RESULT.DRAW) {
     return MATCH_OUTCOME.DRAW;
   }
-  if (winner === PLAYER.PLAYER) {
+  if (winner === "seat1") {
     return userId === seat1 ? MATCH_OUTCOME.WIN : MATCH_OUTCOME.LOSE;
   }
-  if (winner === PLAYER.BOT) {
+  if (winner === "seat2") {
     return userId === seat2 ? MATCH_OUTCOME.WIN : MATCH_OUTCOME.LOSE;
   }
   return MATCH_OUTCOME.DRAW;
@@ -205,8 +228,8 @@ function mapOutcomeForUser(params: {
 
 async function persistOnlineMatchResults(snapshot: OnlineAuthoritativeSnapshot) {
   const userIds = [snapshot.players.seat1, snapshot.players.seat2];
-  const seat1Score = snapshot.scores.player;
-  const seat2Score = snapshot.scores.bot;
+  const seat1Score = snapshot.seatScores.seat1;
+  const seat2Score = snapshot.seatScores.seat2;
 
   await Promise.all(
     userIds.map((userId) =>

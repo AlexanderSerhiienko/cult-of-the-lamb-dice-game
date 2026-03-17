@@ -20,7 +20,7 @@ describe("authoritative online engine", () => {
     });
 
     expect(next.revision).toBe(snapshot.revision + 1);
-    expect(next.playerBoard[0]).toEqual([3]);
+    expect(next.seat1Board[0]).toEqual([3]);
     expect(next.turnUserId).toBe("u2");
   });
 

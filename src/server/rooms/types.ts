@@ -1,4 +1,4 @@
-import type { Board, ColumnIndex, DieValue, GamePhase, GameWinner, PlayerScores } from "@/features/game/core/types";
+import type { Board, ColumnIndex, DieValue, GamePhase, GameWinner } from "@/features/game/core/types";
 
 export const ROOM_STATUS = {
   WAITING: "WAITING",
@@ -69,9 +69,9 @@ export type MatchSnapshotPayload = {
   revision: number;
   phase: GamePhase;
   currentRoll: DieValue | null;
-  playerBoard: Board;
-  opponentBoard: Board;
-  scores: PlayerScores;
+  seat1Board: Board;
+  seat2Board: Board;
+  seatScores: { seat1: number; seat2: number };
   winner: GameWinner | null;
   actorUserId: string | null;
   seat: 1 | 2;

@@ -3,44 +3,44 @@ import type { Board, ColumnIndex, GamePhase } from "@/features/game/core/types";
 import { GameBoard } from "@/features/game/components/game-board";
 
 type BoardsStackProps = {
-  botBoard: Board;
-  playerBoard: Board;
+  upperBoard: Board;
+  lowerBoard: Board;
   phase: GamePhase;
-  botBoardTitle: string;
-  playerBoardTitle: string;
-  botAvailableColumns: ColumnIndex[];
-  playerAvailableColumns: ColumnIndex[];
-  botBoardSelectable?: boolean;
+  upperBoardTitle: string;
+  lowerBoardTitle: string;
+  upperAvailableColumns: ColumnIndex[];
+  lowerAvailableColumns: ColumnIndex[];
+  upperBoardSelectable?: boolean;
   onSelectColumn: (columnIndex: ColumnIndex) => void;
 };
 
 export function BoardsStack({
-  botBoard,
-  playerBoard,
+  upperBoard,
+  lowerBoard,
   phase,
-  botBoardTitle,
-  playerBoardTitle,
-  botAvailableColumns,
-  playerAvailableColumns,
-  botBoardSelectable = false,
+  upperBoardTitle,
+  lowerBoardTitle,
+  upperAvailableColumns,
+  lowerAvailableColumns,
+  upperBoardSelectable = false,
   onSelectColumn,
 }: BoardsStackProps) {
   return (
     <main className="mx-auto flex w-fit self-center flex-col gap-4">
       <GameBoard
-        title={botBoardTitle}
-        board={botBoard}
+        title={upperBoardTitle}
+        board={upperBoard}
         isActive={phase === GAME_PHASE.BOT_TURN}
-        interactiveColumns={botAvailableColumns}
+        interactiveColumns={upperAvailableColumns}
         onSelectColumn={onSelectColumn}
-        canInteract={botBoardSelectable}
+        canInteract={upperBoardSelectable}
       />
       <GameBoard
-        title={playerBoardTitle}
-        board={playerBoard}
+        title={lowerBoardTitle}
+        board={lowerBoard}
         isActive={phase === GAME_PHASE.PLAYER_TURN}
         isPlayerBoard
-        interactiveColumns={playerAvailableColumns}
+        interactiveColumns={lowerAvailableColumns}
         onSelectColumn={onSelectColumn}
         canInteract
       />

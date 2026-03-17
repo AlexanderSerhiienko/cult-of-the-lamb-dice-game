@@ -7,6 +7,7 @@ function createEmptyState(roomId, matchId) {
     players: {},
     currentTurnUserId: null,
     lastMoveAt: null,
+    updatedAt: Date.now(),
   };
 }
 
@@ -14,6 +15,7 @@ export class RoomManager {
   constructor() {
     this.rooms = new Map();
     this.matches = new Map();
+    this.matchTouchedAt = new Map();
     this.moveBuckets = new Map();
   }
 
@@ -26,6 +28,7 @@ export class RoomManager {
     if (matchId && !state.matchId) {
       state.matchId = matchId;
     }
+    state.updatedAt = Date.now();
     return state;
   }
 
@@ -48,6 +51,7 @@ export class RoomManager {
     if (wasDisconnected) {
       state.revision += 1;
     }
+    state.updatedAt = Date.now();
 
     return {
       state,
@@ -65,6 +69,7 @@ export class RoomManager {
     player.socketIds = player.socketIds.filter((currentSocketId) => currentSocketId !== socketId);
 
     if (player.socketIds.length > 0) {
+      state.updatedAt = Date.now();
       return {
         state,
         fullyDisconnected: false,
@@ -73,6 +78,7 @@ export class RoomManager {
 
     player.disconnectedAt = Date.now();
     state.revision += 1;
+    state.updatedAt = Date.now();
     return {
       state,
       fullyDisconnected: true,
@@ -85,6 +91,7 @@ export class RoomManager {
     state.currentTurnUserId = userId;
     state.lastMoveAt = Date.now();
     state.revision += 1;
+    state.updatedAt = Date.now();
     return state;
   }
 
@@ -94,6 +101,10 @@ export class RoomManager {
 
   setMatch(matchId, snapshot) {
     this.matches.set(matchId, snapshot);
+    this.matchTouchedAt.set(matchId, Date.now());
+    if (snapshot?.roomId) {
+      this.ensureRoom(snapshot.roomId, matchId);
+    }
   }
 
   findMatchIdByRoomId(roomId) {
@@ -122,5 +133,65 @@ export class RoomManager {
 
     existing.count += 1;
     return true;
+  }
+
+  pruneStaleState(params = {}) {
+    const now = params.now ?? Date.now();
+    const staleRoomMs = params.staleRoomMs ?? 30 * 60_000;
+    const staleMatchMs = params.staleMatchMs ?? 30 * 60_000;
+    let removedRooms = 0;
+    let removedMatches = 0;
+    let removedMoveBuckets = 0;
+
+    for (const [roomId, room] of this.rooms.entries()) {
+      const hasConnectedPlayers = Object.values(room.players).some((player) => player.socketIds.length > 0);
+      const staleSince = room.updatedAt ?? room.lastMoveAt ?? 0;
+      if (hasConnectedPlayers || now - staleSince < staleRoomMs) {
+        continue;
+      }
+
+      this.rooms.delete(roomId);
+      removedRooms += 1;
+    }
+
+    for (const [matchId, snapshot] of this.matches.entries()) {
+      const touchedAt = this.matchTouchedAt.get(matchId) ?? 0;
+      const relatedRoom = snapshot?.roomId ? this.rooms.get(snapshot.roomId) : null;
+      const roomStillActive = relatedRoom
+        ? Object.values(relatedRoom.players).some((player) => player.socketIds.length > 0)
+        : false;
+      const finished = Boolean(snapshot?.winner);
+
+      if ((roomStillActive || !finished) && now - touchedAt < staleMatchMs) {
+        continue;
+      }
+
+      if (roomStillActive) {
+        continue;
+      }
+
+      if (now - touchedAt < staleMatchMs) {
+        continue;
+      }
+
+      this.matches.delete(matchId);
+      this.matchTouchedAt.delete(matchId);
+      removedMatches += 1;
+    }
+
+    for (const [userId, bucket] of this.moveBuckets.entries()) {
+      if (bucket.resetAt > now) {
+        continue;
+      }
+
+      this.moveBuckets.delete(userId);
+      removedMoveBuckets += 1;
+    }
+
+    return {
+      removedRooms,
+      removedMatches,
+      removedMoveBuckets,
+    };
   }
 }

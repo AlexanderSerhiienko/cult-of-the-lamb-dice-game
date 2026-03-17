@@ -4,7 +4,9 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { OnlineGameContent } from "@/features/online/components/online-game-content";
+import { OnlineStatusBanner } from "@/features/online/components/online-status-banner";
 import { useOnlineRoomSocket } from "@/features/online/hooks/use-online-room-socket";
+import { isOnlineInteractionBlocked } from "@/features/online/types";
 import { useGameStore } from "@/features/game/store/use-game-store";
 
 export default function OnlinePlayPage() {
@@ -56,27 +58,28 @@ export default function OnlinePlayPage() {
   if (!mySeat) {
     return (
       <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-        <p className="text-sm text-slate-300">Connecting to room...</p>
-        {socket.error ? <p className="mt-3 text-sm text-rose-300">{socket.error}</p> : null}
+        <OnlineStatusBanner
+          status={socket.status}
+          opponentDisconnectSecondsLeft={reconnectSecondsLeft}
+          error={socket.error}
+        />
       </section>
     );
   }
 
   return (
-    <div>
-      {socket.opponentDisconnected ? (
-        <div className="mb-3 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
-          Opponent disconnected. Waiting for reconnect: {reconnectSecondsLeft ?? 0}s. After timeout, win is
-          granted automatically.
-        </div>
-      ) : null}
-      {socket.opponentConnectionState === "left_match" ? (
-        <div className="mb-3 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-          Opponent left the match. You win immediately.
-        </div>
-      ) : null}
-      <OnlineGameContent mySeat={mySeat} userId={userId} onSelectColumn={socket.sendMove} />
-      {socket.error ? <p className="mt-3 text-sm text-rose-300">{socket.error}</p> : null}
-    </div>
+    <OnlineGameContent
+      mySeat={mySeat}
+      userId={userId}
+      onSelectColumn={socket.sendMove}
+      interactionBlocked={isOnlineInteractionBlocked(socket.status)}
+      statusBanner={
+        <OnlineStatusBanner
+          status={socket.status}
+          opponentDisconnectSecondsLeft={reconnectSecondsLeft}
+          error={socket.error}
+        />
+      }
+    />
   );
 }

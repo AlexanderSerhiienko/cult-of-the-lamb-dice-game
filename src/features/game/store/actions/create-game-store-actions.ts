@@ -28,6 +28,22 @@ function createMatchId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function createSeatBoardState(params: {
+  seat1Board: GameStore["seat1Board"];
+  seat2Board: GameStore["seat2Board"];
+}) {
+  return {
+    seat1Board: params.seat1Board,
+    seat2Board: params.seat2Board,
+  };
+}
+
+function createSeatScoreState(seatScores: GameStore["seatScores"]) {
+  return {
+    seatScores,
+  };
+}
+
 export function createGameStoreActions(params: {
   set: SetState;
   get: GetState;
@@ -38,13 +54,15 @@ export function createGameStoreActions(params: {
     startGame: () => {
       const boards = createInitialBoards();
       set({
-        playerBoard: boards.player,
-        botBoard: boards.bot,
+        ...createSeatBoardState({
+          seat1Board: boards.player,
+          seat2Board: boards.bot,
+        }),
         currentRoll: rollDie(),
         turn: PLAYER.PLAYER,
         phase: GAME_PHASE.PLAYER_TURN,
         interactionLocked: false,
-        scores: { player: 0, bot: 0 },
+        ...createSeatScoreState({ seat1: 0, seat2: 0 }),
         status: GAME_STATUS.IN_PROGRESS,
         winner: null,
         matchId: createMatchId(),
@@ -79,8 +97,8 @@ export function createGameStoreActions(params: {
         return;
       }
 
-      const activeBoard = isPlayerTurn ? state.playerBoard : state.botBoard;
-      const passiveBoard = isPlayerTurn ? state.botBoard : state.playerBoard;
+      const activeBoard = isPlayerTurn ? state.seat1Board : state.seat2Board;
+      const passiveBoard = isPlayerTurn ? state.seat2Board : state.seat1Board;
       const availableColumns = getAvailableColumns(activeBoard);
       if (!availableColumns.includes(columnIndex)) {
         return;
@@ -95,15 +113,15 @@ export function createGameStoreActions(params: {
         dieValue: state.currentRoll,
       });
 
-      const nextPlayerBoard = isPlayerTurn ? nextCurrentBoard : nextOpponentBoard;
-      const nextBotBoard = isPlayerTurn ? nextOpponentBoard : nextCurrentBoard;
-      const scores = {
-        player: scoreBoard(nextPlayerBoard),
-        bot: scoreBoard(nextBotBoard),
+      const nextSeat1Board = isPlayerTurn ? nextCurrentBoard : nextOpponentBoard;
+      const nextSeat2Board = isPlayerTurn ? nextOpponentBoard : nextCurrentBoard;
+      const seatScores = {
+        seat1: scoreBoard(nextSeat1Board),
+        seat2: scoreBoard(nextSeat2Board),
       };
       const removedDiceCount = isPlayerTurn
-        ? state.botBoard[columnIndex].length - nextBotBoard[columnIndex].length
-        : state.playerBoard[columnIndex].length - nextPlayerBoard[columnIndex].length;
+        ? state.seat2Board[columnIndex].length - nextSeat2Board[columnIndex].length
+        : state.seat1Board[columnIndex].length - nextSeat1Board[columnIndex].length;
 
       playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
       if (removedDiceCount > 0) {
@@ -111,8 +129,8 @@ export function createGameStoreActions(params: {
       }
 
       const status = getGameStatus({
-        player: nextPlayerBoard,
-        bot: nextBotBoard,
+        player: nextSeat1Board,
+        bot: nextSeat2Board,
       });
 
       const finished = status === GAME_STATUS.FINISHED;
@@ -130,13 +148,15 @@ export function createGameStoreActions(params: {
       const nextRoll = finished ? null : isPvb ? null : rollDie();
 
       set({
-        playerBoard: nextPlayerBoard,
-        botBoard: nextBotBoard,
+        ...createSeatBoardState({
+          seat1Board: nextSeat1Board,
+          seat2Board: nextSeat2Board,
+        }),
         currentRoll: nextRoll,
         turn: nextTurn,
         phase: nextPhase,
         interactionLocked: finished,
-        scores,
+        ...createSeatScoreState(seatScores),
         status,
       });
 
@@ -151,7 +171,7 @@ export function createGameStoreActions(params: {
         return;
       }
 
-      const availableColumns = getAvailableColumns(state.botBoard);
+      const availableColumns = getAvailableColumns(state.seat2Board);
       if (availableColumns.length === 0) {
         get().finishGame();
         return;
@@ -159,24 +179,24 @@ export function createGameStoreActions(params: {
 
       const roll = rollDie();
       const botColumn = chooseBotColumn({
-        botBoard: state.botBoard,
-        playerBoard: state.playerBoard,
+        playerBoard: state.seat1Board,
+        botBoard: state.seat2Board,
         dieValue: roll,
         difficulty: state.botDifficulty,
       });
 
       const { nextCurrentBoard, nextOpponentBoard } = applyMove({
-        currentBoard: state.botBoard,
-        opponentBoard: state.playerBoard,
+        currentBoard: state.seat2Board,
+        opponentBoard: state.seat1Board,
         columnIndex: botColumn,
         dieValue: roll,
       });
 
-      const scores = {
-        player: scoreBoard(nextOpponentBoard),
-        bot: scoreBoard(nextCurrentBoard),
+      const seatScores = {
+        seat1: scoreBoard(nextOpponentBoard),
+        seat2: scoreBoard(nextCurrentBoard),
       };
-      const removedDiceCount = state.playerBoard[botColumn].length - nextOpponentBoard[botColumn].length;
+      const removedDiceCount = state.seat1Board[botColumn].length - nextOpponentBoard[botColumn].length;
 
       playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
       if (removedDiceCount > 0) {
@@ -191,13 +211,15 @@ export function createGameStoreActions(params: {
       const finished = status === GAME_STATUS.FINISHED;
 
       set({
-        playerBoard: nextOpponentBoard,
-        botBoard: nextCurrentBoard,
+        ...createSeatBoardState({
+          seat1Board: nextOpponentBoard,
+          seat2Board: nextCurrentBoard,
+        }),
         currentRoll: finished ? null : rollDie(),
         turn: finished ? state.turn : PLAYER.PLAYER,
         phase: finished ? GAME_PHASE.FINISHED : GAME_PHASE.PLAYER_TURN,
         interactionLocked: finished,
-        scores,
+        ...createSeatScoreState(seatScores),
         status,
       });
 
@@ -208,19 +230,19 @@ export function createGameStoreActions(params: {
     recalculateScores: () => {
       const state = get();
       set({
-        scores: {
-          player: scoreBoard(state.playerBoard),
-          bot: scoreBoard(state.botBoard),
-        },
+        ...createSeatScoreState({
+          seat1: scoreBoard(state.seat1Board),
+          seat2: scoreBoard(state.seat2Board),
+        }),
       });
     },
     finishGame: () => {
       const state = get();
-      const finalScores = {
-        player: scoreBoard(state.playerBoard),
-        bot: scoreBoard(state.botBoard),
+      const finalSeatScores = {
+        seat1: scoreBoard(state.seat1Board),
+        seat2: scoreBoard(state.seat2Board),
       };
-      const result = determineResult(state.playerBoard, state.botBoard);
+      const result = determineResult(state.seat1Board, state.seat2Board);
       const winner: GameWinner =
         result === GAME_RESULT.DRAW
           ? GAME_RESULT.DRAW
@@ -239,7 +261,7 @@ export function createGameStoreActions(params: {
       set({
         phase: GAME_PHASE.FINISHED,
         status: GAME_STATUS.FINISHED,
-        scores: finalScores,
+        ...createSeatScoreState(finalSeatScores),
         winner,
         currentRoll: null,
         interactionLocked: true,
@@ -251,13 +273,15 @@ export function createGameStoreActions(params: {
     rematch: () => {
       const boards = createInitialBoards();
       set({
-        playerBoard: boards.player,
-        botBoard: boards.bot,
+        ...createSeatBoardState({
+          seat1Board: boards.player,
+          seat2Board: boards.bot,
+        }),
         currentRoll: rollDie(),
         turn: PLAYER.PLAYER,
         phase: GAME_PHASE.PLAYER_TURN,
         interactionLocked: false,
-        scores: { player: 0, bot: 0 },
+        ...createSeatScoreState({ seat1: 0, seat2: 0 }),
         status: GAME_STATUS.IN_PROGRESS,
         winner: null,
         matchId: createMatchId(),
@@ -287,22 +311,21 @@ export function createGameStoreActions(params: {
       set({
         onlineRoomId: roomId,
         onlineMySeat: seat,
-        onlineError: null,
-      });
-    },
-    setOnlineConnectionState: (connected) => {
-      set({
-        onlineConnected: connected,
       });
     },
     applyOnlineServerState: (params) => {
       const state = get();
       set({
-        playerBoard: params.playerBoard,
-        botBoard: params.botBoard,
+        ...createSeatBoardState({
+          seat1Board: params.seat1Board,
+          seat2Board: params.seat2Board,
+        }),
         currentRoll: params.currentRoll,
         phase: params.phase,
-        scores: params.scores,
+        ...createSeatScoreState({
+          seat1: params.seatScores.seat1,
+          seat2: params.seatScores.seat2,
+        }),
         winner: params.winner,
         status: params.phase === GAME_PHASE.FINISHED ? GAME_STATUS.FINISHED : GAME_STATUS.IN_PROGRESS,
         interactionLocked: params.phase === GAME_PHASE.FINISHED,
@@ -321,9 +344,7 @@ export function createGameStoreActions(params: {
         onlineMySeat: null,
         onlineTurnUserId: null,
         onlineRevision: 0,
-        onlineConnected: false,
         onlineLastSyncAt: null,
-        onlineError: null,
       });
     },
   };

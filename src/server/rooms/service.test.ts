@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/server/rooms/repository", () => ({
@@ -25,10 +26,12 @@ import {
   saveRealtimeMatchState,
   startRoomMatch,
 } from "@/server/rooms/service";
+import type { OnlineAuthoritativeSnapshot } from "@/server/rooms/authoritative-engine";
 import * as roomRepository from "@/server/rooms/repository";
+import type { RoomSnapshot } from "@/server/rooms/types";
 import * as matchesRepository from "@/server/matches/repository";
 
-function createRoomSnapshot(overrides: Partial<Awaited<ReturnType<typeof roomRepository.getRoomSnapshotById>>> = {}) {
+function createRoomSnapshot(overrides: Partial<RoomSnapshot> = {}): RoomSnapshot {
   return {
     room: {
       id: "room-1",
@@ -63,6 +66,7 @@ function createRoomSnapshot(overrides: Partial<Awaited<ReturnType<typeof roomRep
 describe("room service", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   it("creates a room for the user", async () => {
@@ -72,6 +76,33 @@ describe("room service", () => {
 
     expect(roomRepository.createPrivateRoom).toHaveBeenCalled();
     expect(room.room.hostId).toBe("host-1");
+  });
+
+  it("retries room creation only for room code collisions", async () => {
+    const collisionError = new Prisma.PrismaClientKnownRequestError("duplicate", {
+      code: "P2002",
+      clientVersion: "test",
+      meta: { target: ["code"] },
+    });
+    vi.mocked(roomRepository.createPrivateRoom)
+      .mockRejectedValueOnce(collisionError)
+      .mockResolvedValueOnce(createRoomSnapshot());
+
+    const room = await createRoomForUser("host-1");
+
+    expect(room.room.hostId).toBe("host-1");
+    expect(roomRepository.createPrivateRoom).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry room creation for non-collision failures", async () => {
+    vi.mocked(roomRepository.createPrivateRoom).mockRejectedValueOnce(new Error("db offline"));
+
+    await expect(createRoomForUser("host-1")).rejects.toMatchObject({
+      message: "Failed to create room",
+      statusCode: 500,
+    });
+
+    expect(roomRepository.createPrivateRoom).toHaveBeenCalledTimes(1);
   });
 
   it("rejects joining a full room when user is not already a member", async () => {
@@ -109,7 +140,7 @@ describe("room service", () => {
         code: "ABC123",
         userId: "player-3",
       }),
-    ).rejects.toMatchObject<Partial<RoomServiceError>>({
+    ).rejects.toMatchObject({
       message: "Room is full",
       statusCode: 409,
     });
@@ -123,7 +154,7 @@ describe("room service", () => {
         roomId: "room-1",
         userId: "player-2",
       }),
-    ).rejects.toMatchObject<Partial<RoomServiceError>>({
+    ).rejects.toMatchObject({
       message: "Only host can start match",
       statusCode: 403,
     });
@@ -140,19 +171,19 @@ describe("room service", () => {
       ],
     } as never);
 
-    const snapshot = {
+    const snapshot: OnlineAuthoritativeSnapshot = {
       roomId: "room-1",
       matchId: "match-1",
       revision: 3,
       phase: "finished",
       currentRoll: null,
-      playerBoard: [[6], [], []],
-      botBoard: [[1], [], []],
-      scores: {
-        player: 6,
-        bot: 1,
+      seat1Board: [[6], [], []],
+      seat2Board: [[1], [], []],
+      seatScores: {
+        seat1: 6,
+        seat2: 1,
       },
-      winner: "player" as const,
+      winner: "seat1" as const,
       turnUserId: null,
       players: {
         seat1: "host-1",
@@ -173,17 +204,17 @@ describe("room service", () => {
   });
 
   it("returns bootstrap snapshot only for matching room", async () => {
-    const snapshot = {
+    const snapshot: OnlineAuthoritativeSnapshot = {
       roomId: "room-1",
       matchId: "match-1",
       revision: 1,
       phase: "player_turn",
       currentRoll: 2,
-      playerBoard: [[], [], []],
-      botBoard: [[], [], []],
-      scores: {
-        player: 0,
-        bot: 0,
+      seat1Board: [[], [], []],
+      seat2Board: [[], [], []],
+      seatScores: {
+        seat1: 0,
+        seat2: 0,
       },
       winner: null,
       turnUserId: "host-1",
@@ -204,7 +235,7 @@ describe("room service", () => {
         roomId: "room-2",
         matchId: "match-1",
       }),
-    ).rejects.toMatchObject<Partial<RoomServiceError>>({
+    ).rejects.toMatchObject({
       message: "Match not found",
       statusCode: 404,
     });

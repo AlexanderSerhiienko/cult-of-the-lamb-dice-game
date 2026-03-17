@@ -85,6 +85,29 @@ describe("chooseBotColumn", () => {
     expect([0, 1, 2]).toContain(hardResult);
   });
 
+  it("hard mode can choose a different setup move than medium after deeper lookahead", () => {
+    const botBoard: Board = [[], [], []];
+    const playerBoard: Board = [[], [], [2, 2]];
+
+    const mediumResult = chooseBotColumn({
+      botBoard,
+      playerBoard,
+      dieValue: 1,
+      difficulty: BOT_DIFFICULTY.MEDIUM,
+      random: () => 0,
+    });
+    const hardResult = chooseBotColumn({
+      botBoard,
+      playerBoard,
+      dieValue: 1,
+      difficulty: BOT_DIFFICULTY.HARD,
+      random: () => 0,
+    });
+
+    expect(mediumResult).toBe(0);
+    expect(hardResult).toBe(2);
+  });
+
   it("throws when bot has no available columns", () => {
     const fullBotBoard: Board = [
       [1, 2, 3],

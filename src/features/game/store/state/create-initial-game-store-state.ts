@@ -12,13 +12,13 @@ export function createInitialGameStoreState(params: {
   const boards = createInitialBoards();
 
   return {
-    playerBoard: boards.player,
-    botBoard: boards.bot,
+    seat1Board: boards.player,
+    seat2Board: boards.bot,
     currentRoll: null,
     turn: PLAYER.PLAYER,
     phase: GAME_PHASE.IDLE,
     interactionLocked: false,
-    scores: { player: 0, bot: 0 },
+    seatScores: { seat1: 0, seat2: 0 },
     status: GAME_STATUS.IDLE,
     winner: null,
     botDifficulty,
@@ -32,8 +32,6 @@ export function createInitialGameStoreState(params: {
     onlineMySeat: null,
     onlineTurnUserId: null,
     onlineRevision: 0,
-    onlineConnected: false,
     onlineLastSyncAt: null,
-    onlineError: null,
   };
 }

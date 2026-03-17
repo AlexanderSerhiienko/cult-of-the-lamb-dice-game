@@ -28,64 +28,64 @@ function getAvailableColumnsByBoard(params: {
   gameMode: GameMode;
   currentRoll: number | null;
   interactionLocked: boolean;
-  playerBoard: ReturnType<typeof useGameStore.getState>["playerBoard"];
-  botBoard: ReturnType<typeof useGameStore.getState>["botBoard"];
+  seat1Board: ReturnType<typeof useGameStore.getState>["seat1Board"];
+  seat2Board: ReturnType<typeof useGameStore.getState>["seat2Board"];
 }) {
-  const { phase, gameMode, currentRoll, interactionLocked, playerBoard, botBoard } = params;
+  const { phase, gameMode, currentRoll, interactionLocked, seat1Board, seat2Board } = params;
 
   if (currentRoll === null || interactionLocked) {
-    return { playerAvailableColumns: [], botAvailableColumns: [] };
+    return { seat1AvailableColumns: [], seat2AvailableColumns: [] };
   }
 
   if (phase === GAME_PHASE.PLAYER_TURN) {
-    return { playerAvailableColumns: getAvailableColumns(playerBoard), botAvailableColumns: [] };
+    return { seat1AvailableColumns: getAvailableColumns(seat1Board), seat2AvailableColumns: [] };
   }
 
   if (phase === GAME_PHASE.BOT_TURN && gameMode === GAME_MODE.LOCAL_PVP) {
-    return { playerAvailableColumns: [], botAvailableColumns: getAvailableColumns(botBoard) };
+    return { seat1AvailableColumns: [], seat2AvailableColumns: getAvailableColumns(seat2Board) };
   }
 
-  return { playerAvailableColumns: [], botAvailableColumns: [] };
+  return { seat1AvailableColumns: [], seat2AvailableColumns: [] };
 }
 
 function getLabels(gameMode: GameMode) {
   if (gameMode === GAME_MODE.LOCAL_PVP) {
     return {
-      playerScoreLabel: "Player 1 score",
-      playerDieLabel: "Player 1 die",
-      opponentScoreLabel: "Player 2 score",
-      opponentDieLabel: "Player 2 die",
-      playerBoardTitle: "Player 1 board",
-      opponentBoardTitle: "Player 2 board",
+      seat1ScoreLabel: "Player 1 score",
+      seat1DieLabel: "Player 1 die",
+      seat2ScoreLabel: "Player 2 score",
+      seat2DieLabel: "Player 2 die",
+      seat1BoardTitle: "Player 1 board",
+      seat2BoardTitle: "Player 2 board",
     };
   }
 
   if (gameMode === GAME_MODE.ONLINE_PRIVATE) {
     return {
-      playerScoreLabel: "Your score",
-      playerDieLabel: "Your die",
-      opponentScoreLabel: "Opponent score",
-      opponentDieLabel: "Opponent die",
-      playerBoardTitle: "Your board",
-      opponentBoardTitle: "Opponent board",
+      seat1ScoreLabel: "Your score",
+      seat1DieLabel: "Your die",
+      seat2ScoreLabel: "Opponent score",
+      seat2DieLabel: "Opponent die",
+      seat1BoardTitle: "Your board",
+      seat2BoardTitle: "Opponent board",
     };
   }
 
   return {
-    playerScoreLabel: "Your score",
-    playerDieLabel: "Your die",
-    opponentScoreLabel: "Bot score",
-    opponentDieLabel: "Bot die",
-    playerBoardTitle: "Player board",
-    opponentBoardTitle: "Bot board",
+    seat1ScoreLabel: "Your score",
+    seat1DieLabel: "Your die",
+    seat2ScoreLabel: "Bot score",
+    seat2DieLabel: "Bot die",
+    seat1BoardTitle: "Player board",
+    seat2BoardTitle: "Bot board",
   };
 }
 
 export function useGamePageViewModel() {
-  const playerBoard = useGameStore((state) => state.playerBoard);
-  const botBoard = useGameStore((state) => state.botBoard);
+  const seat1Board = useGameStore((state) => state.seat1Board);
+  const seat2Board = useGameStore((state) => state.seat2Board);
   const currentRoll = useGameStore((state) => state.currentRoll);
-  const scores = useGameStore((state) => state.scores);
+  const seatScores = useGameStore((state) => state.seatScores);
   const phase = useGameStore((state) => state.phase);
   const gameMode = useGameStore((state) => state.gameMode);
   const interactionLocked = useGameStore((state) => state.interactionLocked);
@@ -94,44 +94,44 @@ export function useGamePageViewModel() {
   const placePlayerDie = useGameStore((state) => state.placePlayerDie);
   const botMove = useGameStore((state) => state.botMove);
 
-  const { playerAvailableColumns, botAvailableColumns } = getAvailableColumnsByBoard({
+  const { seat1AvailableColumns, seat2AvailableColumns } = getAvailableColumnsByBoard({
     phase,
     gameMode,
     currentRoll,
     interactionLocked,
-    playerBoard,
-    botBoard,
+    seat1Board,
+    seat2Board,
   });
   const gameFinished = phase === GAME_PHASE.FINISHED;
-  const playerCurrentDie = phase === GAME_PHASE.PLAYER_TURN ? currentRoll : null;
-  const botCurrentDie = phase === GAME_PHASE.BOT_TURN ? currentRoll : null;
+  const seat1CurrentDie = phase === GAME_PHASE.PLAYER_TURN ? currentRoll : null;
+  const seat2CurrentDie = phase === GAME_PHASE.BOT_TURN ? currentRoll : null;
   const resultText = getResultText({ winner, gameMode });
   const {
-    playerScoreLabel,
-    playerDieLabel,
-    opponentScoreLabel,
-    opponentDieLabel,
-    playerBoardTitle,
-    opponentBoardTitle,
+    seat1ScoreLabel,
+    seat1DieLabel,
+    seat2ScoreLabel,
+    seat2DieLabel,
+    seat1BoardTitle,
+    seat2BoardTitle,
   } = getLabels(gameMode);
 
   return {
-    playerBoard,
-    botBoard,
-    scores,
+    seat1Board,
+    seat2Board,
+    seatScores,
     phase,
     gameFinished,
-    playerCurrentDie,
-    botCurrentDie,
+    seat1CurrentDie,
+    seat2CurrentDie,
     resultText,
-    playerAvailableColumns,
-    botAvailableColumns,
-    playerScoreLabel,
-    playerDieLabel,
-    opponentScoreLabel,
-    opponentDieLabel,
-    playerBoardTitle,
-    opponentBoardTitle,
+    seat1AvailableColumns,
+    seat2AvailableColumns,
+    seat1ScoreLabel,
+    seat1DieLabel,
+    seat2ScoreLabel,
+    seat2DieLabel,
+    seat1BoardTitle,
+    seat2BoardTitle,
     rematch,
     placePlayerDie,
     botMove,

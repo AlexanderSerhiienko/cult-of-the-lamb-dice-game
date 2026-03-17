@@ -16,11 +16,11 @@ function createSnapshot(): OnlineAuthoritativeSnapshot {
     revision: 4,
     phase: "player_turn",
     currentRoll: 4,
-    playerBoard: [[2], [5], []],
-    botBoard: [[1, 4], [3], [6]],
-    scores: {
-      player: 7,
-      bot: 14,
+    seat1Board: [[2], [5], []],
+    seat2Board: [[1, 4], [3], [6]],
+    seatScores: {
+      seat1: 7,
+      seat2: 14,
     },
     winner: null,
     turnUserId: "u1",

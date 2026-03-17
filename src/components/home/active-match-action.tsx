@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { MenuActionButton } from "@/components/home/menu-action-button";
+import { getReconnectCtaLabel } from "@/features/online/types";
 
 type ActiveMatchPayload = {
   activeMatch: {
@@ -26,6 +27,7 @@ export function ActiveMatchAction() {
     }
 
     let disposed = false;
+    let intervalId: number | null = null;
     const load = async () => {
       try {
         const response = await fetch("/api/rooms/active", { cache: "no-store" });
@@ -38,15 +40,43 @@ export function ActiveMatchAction() {
       }
     };
 
+    const restartPolling = () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      intervalId = window.setInterval(() => {
+        void load();
+      }, 15_000);
+    };
+
     void load();
     const onFocus = () => {
       void load();
     };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void load();
+      }
+      restartPolling();
+    };
+
+    restartPolling();
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       disposed = true;
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [isAuthenticated, pathname]);
 
@@ -72,16 +102,12 @@ export function ActiveMatchAction() {
     return null;
   }
 
-  const reconnectSecondsLeft =
-    typeof activeMatch.reconnectDeadlineMs === "number"
-      ? Math.max(0, Math.ceil((activeMatch.reconnectDeadlineMs - nowMs) / 1000))
-    : null;
-
   return (
     <MenuActionButton href={`/online/room/${activeMatch.roomId}/play?matchId=${activeMatch.matchId}`}>
-      {reconnectSecondsLeft !== null && reconnectSecondsLeft > 0
-        ? `Reconnect to active match (${reconnectSecondsLeft}s)`
-        : "Return to active match"}
+      {getReconnectCtaLabel({
+        reconnectDeadlineMs: activeMatch.reconnectDeadlineMs,
+        nowMs,
+      })}
     </MenuActionButton>
   );
 }

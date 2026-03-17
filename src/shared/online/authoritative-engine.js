@@ -57,7 +57,7 @@ function isBoardFull(board) {
 }
 
 function getGameStatus(boards) {
-  return isBoardFull(boards.player) || isBoardFull(boards.bot) ? "finished" : "in_progress";
+  return isBoardFull(boards.seat1) || isBoardFull(boards.seat2) ? "finished" : "in_progress";
 }
 
 function rollDie() {
@@ -65,11 +65,11 @@ function rollDie() {
 }
 
 function resolveWinner(scores) {
-  if (scores.player > scores.bot) {
-    return "player";
+  if (scores.seat1 > scores.seat2) {
+    return "seat1";
   }
-  if (scores.player < scores.bot) {
-    return "bot";
+  if (scores.seat1 < scores.seat2) {
+    return "seat2";
   }
   return "draw";
 }
@@ -83,9 +83,9 @@ export function createInitialOnlineSnapshot(params) {
     revision: 1,
     phase: "player_turn",
     currentRoll: rollDie(),
-    playerBoard: boards.player,
-    botBoard: boards.bot,
-    scores: { player: 0, bot: 0 },
+    seat1Board: boards.player,
+    seat2Board: boards.bot,
+    seatScores: { seat1: 0, seat2: 0 },
     winner: null,
     turnUserId: params.seat1UserId,
     players: {
@@ -108,8 +108,8 @@ export function applyOnlineMove(params) {
   }
 
   const isSeat1 = snapshot.players.seat1 === userId;
-  const currentBoard = isSeat1 ? snapshot.playerBoard : snapshot.botBoard;
-  const opponentBoard = isSeat1 ? snapshot.botBoard : snapshot.playerBoard;
+  const currentBoard = isSeat1 ? snapshot.seat1Board : snapshot.seat2Board;
+  const opponentBoard = isSeat1 ? snapshot.seat2Board : snapshot.seat1Board;
   const availableColumns = getAvailableColumns(currentBoard);
   if (!availableColumns.includes(columnIndex)) {
     throw new Error("Column is not available");
@@ -122,23 +122,23 @@ export function applyOnlineMove(params) {
     dieValue: snapshot.currentRoll,
   });
 
-  const nextPlayerBoard = isSeat1 ? nextCurrentBoard : nextOpponentBoard;
-  const nextBotBoard = isSeat1 ? nextOpponentBoard : nextCurrentBoard;
-  const scores = {
-    player: scoreBoard(nextPlayerBoard),
-    bot: scoreBoard(nextBotBoard),
+  const nextSeat1Board = isSeat1 ? nextCurrentBoard : nextOpponentBoard;
+  const nextSeat2Board = isSeat1 ? nextOpponentBoard : nextCurrentBoard;
+  const seatScores = {
+    seat1: scoreBoard(nextSeat1Board),
+    seat2: scoreBoard(nextSeat2Board),
   };
-  const finished = getGameStatus({ player: nextPlayerBoard, bot: nextBotBoard }) === "finished";
+  const finished = getGameStatus({ seat1: nextSeat1Board, seat2: nextSeat2Board }) === "finished";
 
   return {
     ...snapshot,
     revision: snapshot.revision + 1,
     phase: finished ? "finished" : "player_turn",
     currentRoll: finished ? null : rollDie(),
-    playerBoard: nextPlayerBoard,
-    botBoard: nextBotBoard,
-    scores,
-    winner: finished ? resolveWinner(scores) : null,
+    seat1Board: nextSeat1Board,
+    seat2Board: nextSeat2Board,
+    seatScores,
+    winner: finished ? resolveWinner(seatScores) : null,
     turnUserId: finished ? null : isSeat1 ? snapshot.players.seat2 : snapshot.players.seat1,
   };
 }
@@ -161,7 +161,7 @@ export function applyDisconnectForfeit(params) {
     revision: snapshot.revision + 1,
     phase: "finished",
     currentRoll: null,
-    winner: isSeat1 ? "bot" : "player",
+    winner: isSeat1 ? "seat2" : "seat1",
     turnUserId: null,
   };
 }

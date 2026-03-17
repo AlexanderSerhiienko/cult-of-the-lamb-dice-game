@@ -12,10 +12,10 @@ export type OnlineAuthoritativeSnapshot = {
   revision: number;
   phase: "player_turn" | "finished";
   currentRoll: DieValue | null;
-  playerBoard: Board;
-  botBoard: Board;
-  scores: { player: number; bot: number };
-  winner: "player" | "bot" | "draw" | null;
+  seat1Board: Board;
+  seat2Board: Board;
+  seatScores: { seat1: number; seat2: number };
+  winner: "seat1" | "seat2" | "draw" | null;
   turnUserId: string | null;
   players: {
     seat1: string;

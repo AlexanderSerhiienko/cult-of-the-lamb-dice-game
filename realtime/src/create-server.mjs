@@ -2,62 +2,153 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { applyAuthoritativeMove, applyDisconnectForfeit, canUserMove } from "./engine/authoritative-engine.mjs";
 import { LatencyMetrics } from "./metrics/latency-metrics.mjs";
+import { createConsoleTelemetrySink } from "./observability/telemetry.mjs";
 import { verifyRoomToken as defaultVerifyRoomToken } from "./auth/verify-token.mjs";
 import { RoomManager } from "./rooms/room-manager.mjs";
 import { ONLINE_SOCKET_EVENT } from "./socket-events.mjs";
 
+const DEFAULT_FETCH_TIMEOUT_MS = 5_000;
+const DEFAULT_FETCH_RETRIES = 2;
+const DEFAULT_STALE_CLEANUP_INTERVAL_MS = 5 * 60_000;
+const DEFAULT_STALE_ROOM_MS = 30 * 60_000;
+const DEFAULT_STALE_MATCH_MS = 30 * 60_000;
+
+async function requestWithRetry(params) {
+  const {
+    fetchImpl,
+    telemetry,
+    url,
+    init,
+    timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
+    retries = DEFAULT_FETCH_RETRIES,
+    eventName,
+  } = params;
+
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      const response = await fetchImpl(url, {
+        ...init,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      lastError = error instanceof Error ? error : new Error("Unknown request error");
+
+      if (attempt < retries) {
+        telemetry.trackEvent("internal_fetch.retrying", {
+          eventName,
+          attempt: attempt + 1,
+          url,
+          error: lastError.message,
+        });
+        continue;
+      }
+    }
+  }
+
+  telemetry.trackError("internal_fetch.failed", {
+    eventName,
+    url,
+    error: lastError instanceof Error ? lastError.message : "Unknown request error",
+  });
+  throw lastError instanceof Error ? lastError : new Error("Request failed");
+}
+
+async function defaultCheckWebApiReady(params) {
+  const { webApiUrl, fetchImpl, telemetry } = params;
+
+  const response = await requestWithRetry({
+    fetchImpl,
+    telemetry,
+    url: `${webApiUrl}/`,
+    init: {
+      method: "GET",
+      cache: "no-store",
+    },
+    timeoutMs: 3_000,
+    retries: 0,
+    eventName: "web_api.readiness_check",
+  });
+
+  return response.status < 500;
+}
+
 function defaultFetchers(params) {
-  const { webApiUrl, internalSecret } = params;
+  const { webApiUrl, internalSecret, telemetry, fetchImpl } = params;
 
   return {
     async fetchBootstrapSnapshot({ roomId, matchId }) {
-      const response = await fetch(`${webApiUrl}/api/internal/realtime/bootstrap`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-realtime-internal-secret": internalSecret,
+      const response = await requestWithRetry({
+        fetchImpl,
+        telemetry,
+        url: `${webApiUrl}/api/internal/realtime/bootstrap`,
+        init: {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-realtime-internal-secret": internalSecret,
+          },
+          body: JSON.stringify({ roomId, matchId }),
         },
-        body: JSON.stringify({ roomId, matchId }),
+        eventName: "bootstrap.fetch",
       });
-      if (!response.ok) {
-        throw new Error("Bootstrap failed");
-      }
 
       const data = await response.json();
       return data.snapshot;
     },
     async persistMatchState({ roomId, matchId, snapshot, finished }) {
-      const response = await fetch(`${webApiUrl}/api/internal/realtime/match-state`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-realtime-internal-secret": internalSecret,
+      await requestWithRetry({
+        fetchImpl,
+        telemetry,
+        url: `${webApiUrl}/api/internal/realtime/match-state`,
+        init: {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-realtime-internal-secret": internalSecret,
+          },
+          body: JSON.stringify({
+            roomId,
+            matchId,
+            snapshot,
+            finished,
+          }),
         },
-        body: JSON.stringify({
-          roomId,
-          matchId,
-          snapshot,
-          finished,
-        }),
-      }).catch((error) => {
-        throw new Error(error instanceof Error ? error.message : "Persist request failed");
+        eventName: "match_state.persist",
       });
-
-      if (!response.ok) {
-        throw new Error(`Persist failed with status ${response.status}`);
-      }
     },
     async hasPlayerLeftMatch({ roomId, userId }) {
-      const response = await fetch(`${webApiUrl}/api/internal/realtime/member-state`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-realtime-internal-secret": internalSecret,
-        },
-        body: JSON.stringify({ roomId, userId }),
-      }).catch(() => null);
-
-      if (!response || !response.ok) {
+      let response;
+      try {
+        response = await requestWithRetry({
+          fetchImpl,
+          telemetry,
+          url: `${webApiUrl}/api/internal/realtime/member-state`,
+          init: {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-realtime-internal-secret": internalSecret,
+            },
+            body: JSON.stringify({ roomId, userId }),
+          },
+          eventName: "member_state.fetch",
+        });
+      } catch {
         return false;
       }
 
@@ -65,16 +156,23 @@ function defaultFetchers(params) {
       return Boolean(data?.left);
     },
     async fetchCurrentMatchId({ roomId }) {
-      const response = await fetch(`${webApiUrl}/api/internal/realtime/current-match`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-realtime-internal-secret": internalSecret,
-        },
-        body: JSON.stringify({ roomId }),
-      }).catch(() => null);
-
-      if (!response || !response.ok) {
+      let response;
+      try {
+        response = await requestWithRetry({
+          fetchImpl,
+          telemetry,
+          url: `${webApiUrl}/api/internal/realtime/current-match`,
+          init: {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-realtime-internal-secret": internalSecret,
+            },
+            body: JSON.stringify({ roomId }),
+          },
+          eventName: "current_match.fetch",
+        });
+      } catch {
         return null;
       }
 
@@ -118,13 +216,72 @@ export function createRealtimeServer(options = {}) {
     options.internalSecret ?? process.env.REALTIME_INTERNAL_SECRET ?? "dev-realtime-internal-secret";
   const verifyRoomToken = options.verifyRoomToken ?? defaultVerifyRoomToken;
   const roomManager = options.roomManager ?? new RoomManager();
+  const telemetry = options.telemetry ?? createConsoleTelemetrySink("realtime");
+  const fetchImpl = options.fetchImpl ?? fetch;
   const moveLatencyMetrics =
-    options.moveLatencyMetrics ?? new LatencyMetrics("move_submit_to_move_applied");
+    options.moveLatencyMetrics ?? new LatencyMetrics("move_submit_to_move_applied", 20, telemetry);
   const syncLatencyMetrics =
-    options.syncLatencyMetrics ?? new LatencyMetrics("sync_request_to_sync_response");
-  const fetchers = options.fetchers ?? defaultFetchers({ webApiUrl, internalSecret });
+    options.syncLatencyMetrics ?? new LatencyMetrics("sync_request_to_sync_response", 20, telemetry);
+  const fetchers =
+    options.fetchers ?? defaultFetchers({ webApiUrl, internalSecret, telemetry, fetchImpl });
+  const checkWebApiReady =
+    options.checkWebApiReady ??
+    (() => defaultCheckWebApiReady({ webApiUrl, fetchImpl, telemetry }));
+  const staleCleanupIntervalMs = options.staleCleanupIntervalMs ?? DEFAULT_STALE_CLEANUP_INTERVAL_MS;
+  const staleRoomMs = options.staleRoomMs ?? DEFAULT_STALE_ROOM_MS;
+  const staleMatchMs = options.staleMatchMs ?? DEFAULT_STALE_MATCH_MS;
+  const configValid = Boolean(origin && webApiUrl && internalSecret);
 
-  const httpServer = createServer();
+  const httpServer = createServer(async (request, response) => {
+    if (!request.url) {
+      response.writeHead(404).end();
+      return;
+    }
+
+    if (request.method === "GET" && request.url === "/health") {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          status: "ok",
+          roomCount: roomManager.rooms.size,
+          matchCount: roomManager.matches.size,
+        }),
+      );
+      return;
+    }
+
+    if (request.method === "GET" && request.url === "/ready") {
+      let dependencyReady = false;
+      let reason = null;
+
+      if (!configValid) {
+        reason = "Missing realtime configuration";
+      } else {
+        try {
+          dependencyReady = await checkWebApiReady();
+          if (!dependencyReady) {
+            reason = "Web API readiness check returned unavailable";
+          }
+        } catch (error) {
+          reason = error instanceof Error ? error.message : "Web API readiness check failed";
+        }
+      }
+
+      const ready = configValid && dependencyReady;
+      response.writeHead(ready ? 200 : 503, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          status: ready ? "ready" : "not_ready",
+          configValid,
+          dependencyReady,
+          reason,
+        }),
+      );
+      return;
+    }
+
+    response.writeHead(404).end();
+  });
   const io = new Server(httpServer, {
     cors: {
       origin,
@@ -143,9 +300,24 @@ export function createRealtimeServer(options = {}) {
       socket.data.roomId = auth.roomId;
       next();
     } catch (error) {
+      telemetry.trackError("token.verify_failed", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
       next(error);
     }
   });
+
+  const staleCleanupIntervalId = setInterval(() => {
+    const result = roomManager.pruneStaleState({
+      staleRoomMs,
+      staleMatchMs,
+    });
+
+    if (result.removedRooms || result.removedMatches || result.removedMoveBuckets) {
+      telemetry.trackEvent("memory_state.pruned", result);
+    }
+  }, staleCleanupIntervalMs);
+  staleCleanupIntervalId.unref?.();
 
   async function finalizeDisconnectForfeit({ roomId, userId }) {
     const latest = roomManager.ensureRoom(roomId);
@@ -159,7 +331,13 @@ export function createRealtimeServer(options = {}) {
         try {
           snapshot = await fetchers.fetchBootstrapSnapshot({ roomId, matchId });
           roomManager.setMatch(matchId, snapshot);
-        } catch {
+        } catch (error) {
+          telemetry.trackError("disconnect_forfeit.bootstrap_failed", {
+            roomId,
+            matchId,
+            userId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
           snapshot = null;
         }
       }
@@ -178,7 +356,7 @@ export function createRealtimeServer(options = {}) {
             finished: true,
           });
         } catch (error) {
-          console.error("[realtime:disconnect_forfeit_persist_failed]", {
+          telemetry.trackError("disconnect_forfeit.persist_failed", {
             roomId,
             matchId,
             userId,
@@ -252,7 +430,13 @@ export function createRealtimeServer(options = {}) {
         try {
           snapshot = await fetchers.fetchBootstrapSnapshot({ roomId, matchId });
           roomManager.setMatch(matchId, snapshot);
-        } catch {
+        } catch (error) {
+          telemetry.trackError("sync.bootstrap_failed", {
+            roomId,
+            matchId,
+            userId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
           socket.emit(ONLINE_SOCKET_EVENT.ERROR, { message: "Unable to sync room state" });
           return;
         }
@@ -268,10 +452,15 @@ export function createRealtimeServer(options = {}) {
             snapshot: reconnectedSnapshot,
             finished: false,
           });
+          telemetry.trackEvent("reconnect_state.cleared", {
+            roomId,
+            matchId,
+            userId,
+          });
           snapshot = reconnectedSnapshot;
           roomManager.setMatch(matchId, snapshot);
         } catch (error) {
-          console.error("[realtime:reconnect_state_persist_failed]", {
+          telemetry.trackError("reconnect_state.persist_failed", {
             roomId,
             matchId,
             userId,
@@ -289,6 +478,12 @@ export function createRealtimeServer(options = {}) {
         snapshot,
         deltaEvents,
         serverRespondedAt: Date.now(),
+      });
+      telemetry.trackEvent("sync.completed", {
+        roomId,
+        matchId,
+        userId,
+        revision: snapshot.revision,
       });
       syncLatencyMetrics.push(Date.now() - startedAt, {
         roomId,
@@ -341,7 +536,13 @@ export function createRealtimeServer(options = {}) {
         try {
           snapshot = await fetchers.fetchBootstrapSnapshot({ roomId, matchId });
           roomManager.setMatch(matchId, snapshot);
-        } catch {
+        } catch (error) {
+          telemetry.trackError("move.bootstrap_failed", {
+            roomId,
+            matchId,
+            userId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
           socket.emit(
             ONLINE_SOCKET_EVENT.MOVE_REJECTED,
             makeMoveRejectedPayload({
@@ -409,14 +610,20 @@ export function createRealtimeServer(options = {}) {
         return;
       }
 
-      try {
-        await fetchers.persistMatchState({
-          roomId,
-          matchId,
-          snapshot: nextSnapshot,
-          finished: Boolean(nextSnapshot.winner),
-        });
-      } catch (error) {
+        try {
+          await fetchers.persistMatchState({
+            roomId,
+            matchId,
+            snapshot: nextSnapshot,
+            finished: Boolean(nextSnapshot.winner),
+          });
+          telemetry.trackEvent("match_state.persisted", {
+            roomId,
+            matchId,
+            revision: nextSnapshot.revision,
+            finished: Boolean(nextSnapshot.winner),
+          });
+        } catch (error) {
         socket.emit(
           ONLINE_SOCKET_EVENT.MOVE_REJECTED,
           makeMoveRejectedPayload({
@@ -428,7 +635,7 @@ export function createRealtimeServer(options = {}) {
             clientMoveId,
           }),
         );
-        console.error("[realtime:persist_failed]", {
+        telemetry.trackError("match_state.persist_failed", {
           roomId,
           matchId,
           userId,
@@ -512,9 +719,15 @@ export function createRealtimeServer(options = {}) {
             snapshot: snapshotWithReconnectState,
             finished: false,
           });
+          telemetry.trackEvent("reconnect_state.persisted", {
+            roomId,
+            matchId,
+            userId,
+            graceEndsAt,
+          });
           roomManager.setMatch(matchId, snapshotWithReconnectState);
         } catch (error) {
-          console.error("[realtime:disconnect_state_persist_failed]", {
+          telemetry.trackError("disconnect_state.persist_failed", {
             roomId,
             matchId,
             userId,
@@ -561,6 +774,7 @@ export function createRealtimeServer(options = {}) {
       return httpServer.address();
     },
     async close() {
+      clearInterval(staleCleanupIntervalId);
       await new Promise((resolve, reject) => {
         io.close((error) => {
           if (error) {

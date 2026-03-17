@@ -28,7 +28,7 @@ export function useMatchReportEffect() {
   const matchId = useGameStore((state) => state.matchId);
   const reportStatus = useGameStore((state) => state.reportStatus);
   const winner = useGameStore((state) => state.winner);
-  const scores = useGameStore((state) => state.scores);
+  const seatScores = useGameStore((state) => state.seatScores);
   const setReportStatus = useGameStore((state) => state.setReportStatus);
 
   useEffect(() => {
@@ -67,8 +67,8 @@ export function useMatchReportEffect() {
         externalMatchId: matchId,
         mode: "bot",
         outcome,
-        playerScore: scores.player,
-        opponentScore: scores.bot,
+        playerScore: seatScores.seat1,
+        opponentScore: seatScores.seat2,
       }),
     })
       .then(async (response) => {
@@ -84,5 +84,5 @@ export function useMatchReportEffect() {
           reportError: error instanceof Error ? error.message : "Failed to report match",
         });
       });
-  }, [authStatus, gameMode, matchId, phase, reportStatus, scores.bot, scores.player, setReportStatus, winner]);
+  }, [authStatus, gameMode, matchId, phase, reportStatus, seatScores.seat1, seatScores.seat2, setReportStatus, winner]);
 }

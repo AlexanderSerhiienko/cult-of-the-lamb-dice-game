@@ -7,18 +7,22 @@ import type {
   GamePhase,
   GameStatus,
   GameWinner,
-  PlayerScores,
   Turn,
 } from "@/features/game/core/types";
 
+export type SeatScores = {
+  seat1: number;
+  seat2: number;
+};
+
 export type GameStoreState = {
-  playerBoard: Board;
-  botBoard: Board;
+  seat1Board: Board;
+  seat2Board: Board;
   currentRoll: DieValue | null;
   turn: Turn;
   phase: GamePhase;
   interactionLocked: boolean;
-  scores: PlayerScores;
+  seatScores: SeatScores;
   status: GameStatus;
   winner: GameWinner | null;
   botDifficulty: BotDifficulty;
@@ -32,9 +36,7 @@ export type GameStoreState = {
   onlineMySeat: 1 | 2 | null;
   onlineTurnUserId: string | null;
   onlineRevision: number;
-  onlineConnected: boolean;
   onlineLastSyncAt: number | null;
-  onlineError: string | null;
 };
 
 export type GameStoreActions = {
@@ -56,13 +58,12 @@ export type GameStoreActions = {
     },
   ) => void;
   setOnlineSession: (params: { roomId: string; seat: 1 | 2 | null }) => void;
-  setOnlineConnectionState: (connected: boolean) => void;
   applyOnlineServerState: (params: {
-    playerBoard: Board;
-    botBoard: Board;
+    seat1Board: Board;
+    seat2Board: Board;
     currentRoll: DieValue | null;
     phase: GamePhase;
-    scores: PlayerScores;
+    seatScores: { seat1: number; seat2: number };
     winner: GameWinner | null;
     revision: number;
     turnUserId: string | null;

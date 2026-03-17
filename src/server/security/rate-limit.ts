@@ -1,10 +1,13 @@
 import { consumeInMemoryRateLimit } from "@/server/security/rate-limit-memory";
+import { createConsoleTelemetrySink } from "@/server/observability/telemetry";
 import { consumeUpstashRateLimit, isUpstashRateLimitConfigured } from "@/server/security/rate-limit-upstash";
 
 export type RateLimitResult = {
   ok: boolean;
   retryAfterSec: number;
 };
+
+const telemetry = createConsoleTelemetrySink("web");
 
 export async function consumeRateLimit(params: {
   key: string;
@@ -15,7 +18,7 @@ export async function consumeRateLimit(params: {
     try {
       return await consumeUpstashRateLimit(params);
     } catch (error) {
-      console.error("[rate-limit:upstash_fallback_to_memory]", {
+      telemetry.trackError("rate_limit.upstash_fallback_to_memory", {
         key: params.key,
         error: error instanceof Error ? error.message : "Unknown error",
       });

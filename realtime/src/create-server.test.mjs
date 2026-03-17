@@ -27,9 +27,9 @@ function createSnapshot() {
     revision: 1,
     phase: "player_turn",
     currentRoll: 4,
-    playerBoard: [[], [], []],
-    botBoard: [[], [], []],
-    scores: { player: 0, bot: 0 },
+    seat1Board: [[], [], []],
+    seat2Board: [[], [], []],
+    seatScores: { seat1: 0, seat2: 0 },
     winner: null,
     turnUserId: "u1",
     players: {
@@ -49,6 +49,14 @@ function delay(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  return {
+    status: response.status,
+    body: await response.json(),
+  };
 }
 
 describe("createRealtimeServer", () => {
@@ -243,7 +251,36 @@ describe("createRealtimeServer", () => {
     const finishedPayload = await finishedEvent;
 
     expect(peerStatePayload.reason).toBe("left_match");
-    expect(finishedPayload.snapshot.winner).toBe("bot");
-    expect(snapshotStore.current.winner).toBe("bot");
+    expect(finishedPayload.snapshot.winner).toBe("seat2");
+    expect(snapshotStore.current.winner).toBe("seat2");
+  });
+
+  itIfPortBindingAvailable("exposes health and readiness endpoints", async () => {
+    const server = createRealtimeServer({
+      origin: "*",
+      verifyRoomToken(token) {
+        const [userId, roomId] = token.split(":");
+        return { userId, roomId };
+      },
+      checkWebApiReady: async () => true,
+    });
+
+    resources.push(async () => {
+      await server.close();
+    });
+
+    const address = await server.listen(0);
+    const port = typeof address === "object" && address ? address.port : 0;
+    const url = `http://127.0.0.1:${port}`;
+
+    const health = await fetchJson(`${url}/health`);
+    const ready = await fetchJson(`${url}/ready`);
+
+    expect(health.status).toBe(200);
+    expect(health.body.status).toBe("ok");
+    expect(ready.status).toBe(200);
+    expect(ready.body.status).toBe("ready");
+    expect(ready.body.configValid).toBe(true);
+    expect(ready.body.dependencyReady).toBe(true);
   });
 });

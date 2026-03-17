@@ -30,9 +30,9 @@ describe("useGameStore", () => {
 
     expect(state.status).toBe(GAME_STATUS.IDLE);
     expect(state.phase).toBe(GAME_PHASE.IDLE);
-    expect(state.playerBoard).toEqual([[], [], []]);
-    expect(state.botBoard).toEqual([[], [], []]);
-    expect(state.scores).toEqual({ player: 0, bot: 0 });
+    expect(state.seat1Board).toEqual([[], [], []]);
+    expect(state.seat2Board).toEqual([[], [], []]);
+    expect(state.seatScores).toEqual({ seat1: 0, seat2: 0 });
     expect(state.currentRoll).toBeNull();
     expect(state.winner).toBeNull();
   });
@@ -40,9 +40,9 @@ describe("useGameStore", () => {
   it("rematch fully resets state into active game", () => {
     useGameStore.getState().startGame();
     useGameStore.setState({
-      playerBoard: [[1], [2], []],
-      botBoard: [[3], [], []],
-      scores: { player: 3, bot: 3 },
+      seat1Board: [[1], [2], []],
+      seat2Board: [[3], [], []],
+      seatScores: { seat1: 3, seat2: 3 },
       winner: GAME_RESULT.DRAW,
       phase: GAME_PHASE.FINISHED,
       status: GAME_STATUS.FINISHED,
@@ -55,9 +55,9 @@ describe("useGameStore", () => {
     expect(state.phase).toBe(GAME_PHASE.PLAYER_TURN);
     expect(state.status).toBe(GAME_STATUS.IN_PROGRESS);
     expect(state.interactionLocked).toBe(false);
-    expect(state.playerBoard).toEqual([[], [], []]);
-    expect(state.botBoard).toEqual([[], [], []]);
-    expect(state.scores).toEqual({ player: 0, bot: 0 });
+    expect(state.seat1Board).toEqual([[], [], []]);
+    expect(state.seat2Board).toEqual([[], [], []]);
+    expect(state.seatScores).toEqual({ seat1: 0, seat2: 0 });
     expect(state.currentRoll).not.toBeNull();
     expect(state.winner).toBeNull();
   });
@@ -80,15 +80,15 @@ describe("useGameStore", () => {
   it("sets draw on finish when scores are equal", () => {
     useGameStore.getState().startGame();
     useGameStore.setState({
-      playerBoard: [[2], [3], []],
-      botBoard: [[1], [4], []],
+      seat1Board: [[2], [3], []],
+      seat2Board: [[1], [4], []],
     });
 
     useGameStore.getState().finishGame();
     const state = useGameStore.getState();
 
     expect(state.winner).toBe(GAME_RESULT.DRAW);
-    expect(state.scores).toEqual({ player: 5, bot: 5 });
+    expect(state.seatScores).toEqual({ seat1: 5, seat2: 5 });
     expect(state.phase).toBe(GAME_PHASE.FINISHED);
     expect(state.status).toBe(GAME_STATUS.FINISHED);
   });
@@ -96,11 +96,11 @@ describe("useGameStore", () => {
   it("ignores second place action in same player turn", () => {
     useGameStore.getState().startGame();
 
-    const beforeFirstPlace = useGameStore.getState().playerBoard;
+    const beforeFirstPlace = useGameStore.getState().seat1Board;
     useGameStore.getState().placePlayerDie(0);
-    const afterFirstPlace = useGameStore.getState().playerBoard;
+    const afterFirstPlace = useGameStore.getState().seat1Board;
     useGameStore.getState().placePlayerDie(1);
-    const afterSecondPlace = useGameStore.getState().playerBoard;
+    const afterSecondPlace = useGameStore.getState().seat1Board;
 
     expect(countDice(beforeFirstPlace)).toBe(0);
     expect(countDice(afterFirstPlace)).toBe(1);
@@ -187,13 +187,13 @@ describe("useGameStore", () => {
     expect(state.phase).toBe(GAME_PHASE.BOT_TURN);
     expect(state.currentRoll).not.toBeNull();
 
-    const diceBeforeSecondTurn = countDice(state.botBoard);
+    const diceBeforeSecondTurn = countDice(state.seat2Board);
     useGameStore.getState().placePlayerDie(0);
 
     state = useGameStore.getState();
     expect(state.phase).toBe(GAME_PHASE.PLAYER_TURN);
     expect(state.currentRoll).not.toBeNull();
-    expect(countDice(state.botBoard)).toBe(diceBeforeSecondTurn + 1);
+    expect(countDice(state.seat2Board)).toBe(diceBeforeSecondTurn + 1);
   });
 
   it("ignores botMove in local mode", () => {
@@ -202,16 +202,16 @@ describe("useGameStore", () => {
     useGameStore.getState().placePlayerDie(0);
 
     const before = useGameStore.getState();
-    const beforeBotDice = countDice(before.botBoard);
-    const beforePlayerDice = countDice(before.playerBoard);
+    const beforeBotDice = countDice(before.seat2Board);
+    const beforePlayerDice = countDice(before.seat1Board);
     const beforeRoll = before.currentRoll;
 
     useGameStore.getState().botMove();
 
     const after = useGameStore.getState();
     expect(after.phase).toBe(GAME_PHASE.BOT_TURN);
-    expect(countDice(after.botBoard)).toBe(beforeBotDice);
-    expect(countDice(after.playerBoard)).toBe(beforePlayerDice);
+    expect(countDice(after.seat2Board)).toBe(beforeBotDice);
+    expect(countDice(after.seat1Board)).toBe(beforePlayerDice);
     expect(after.currentRoll).toBe(beforeRoll);
   });
 
@@ -229,8 +229,8 @@ describe("useGameStore", () => {
     useGameStore.getState().setGameMode(GAME_MODE.PVB);
     useGameStore.getState().startGame();
     useGameStore.setState({
-      playerBoard: [[6], [], []],
-      botBoard: [[1], [], []],
+      seat1Board: [[6], [], []],
+      seat2Board: [[1], [], []],
     });
 
     useGameStore.getState().finishGame();
@@ -244,8 +244,8 @@ describe("useGameStore", () => {
     useGameStore.getState().setGameMode(GAME_MODE.LOCAL_PVP);
     useGameStore.getState().startGame();
     useGameStore.setState({
-      playerBoard: [[6], [], []],
-      botBoard: [[1], [], []],
+      seat1Board: [[6], [], []],
+      seat2Board: [[1], [], []],
     });
 
     useGameStore.getState().finishGame();

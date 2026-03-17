@@ -18,10 +18,12 @@ type EvaluatedMove = {
 };
 
 const EASY_RANDOM_MOVE_RATE = 0.75;
-const HARD_WORST_CASE_WEIGHT = 0.9;
-const HARD_AVERAGE_CASE_WEIGHT = 0.1;
-const HARD_IMMEDIATE_WEIGHT = 0.25;
+const HARD_WORST_CASE_WEIGHT = 0.55;
+const HARD_AVERAGE_CASE_WEIGHT = 0.25;
+const HARD_IMMEDIATE_WEIGHT = 0.2;
+const BOARD_SPACE_WEIGHT = 0.5;
 const POSSIBLE_PLAYER_ROLLS: DieValue[] = [1, 2, 3, 4, 5, 6];
+const POSSIBLE_BOT_ROLLS: DieValue[] = [1, 2, 3, 4, 5, 6];
 
 export function chooseBotColumn({
   botBoard,
@@ -102,11 +104,11 @@ function chooseHardColumn(evaluatedMoves: EvaluatedMove[], random: () => number)
   const bestColumns: ColumnIndex[] = [];
 
   for (const evaluatedMove of evaluatedMoves) {
-    const playerResponseScore = evaluatePlayerResponse({
+    const lookaheadScore = evaluateHardLookahead({
       botBoardAfterMove: evaluatedMove.nextBotBoard,
       playerBoardAfterMove: evaluatedMove.nextPlayerBoard,
     });
-    const hardScore = evaluatedMove.immediateScore * HARD_IMMEDIATE_WEIGHT + playerResponseScore;
+    const hardScore = evaluatedMove.immediateScore * HARD_IMMEDIATE_WEIGHT + lookaheadScore;
 
     if (hardScore > bestScore) {
       bestScore = hardScore;
@@ -124,38 +126,105 @@ function chooseHardColumn(evaluatedMoves: EvaluatedMove[], random: () => number)
   return bestColumns[pickIndex] ?? bestColumns[0];
 }
 
-function evaluatePlayerResponse(params: {
+function evaluateHardLookahead(params: {
   botBoardAfterMove: Board;
   playerBoardAfterMove: Board;
 }): number {
   const { botBoardAfterMove, playerBoardAfterMove } = params;
-  const playerColumns = getAvailableColumns(playerBoardAfterMove);
-
-  if (playerColumns.length === 0) {
-    return scoreBoard(botBoardAfterMove) - scoreBoard(playerBoardAfterMove);
-  }
 
   const rollOutcomes = POSSIBLE_PLAYER_ROLLS.map((roll) => {
-    let bestPlayerOutcome = Number.POSITIVE_INFINITY;
-
-    for (const columnIndex of playerColumns) {
-      const { nextCurrentBoard, nextOpponentBoard } = applyMove({
-        currentBoard: playerBoardAfterMove,
-        opponentBoard: botBoardAfterMove,
-        columnIndex,
-        dieValue: roll,
-      });
-      const botAdvantageAfterResponse = scoreBoard(nextOpponentBoard) - scoreBoard(nextCurrentBoard);
-      bestPlayerOutcome = Math.min(bestPlayerOutcome, botAdvantageAfterResponse);
-    }
-
-    return bestPlayerOutcome;
+    return evaluatePlayerTurn({
+      botBoard: botBoardAfterMove,
+      playerBoard: playerBoardAfterMove,
+      playerRoll: roll,
+    });
   });
 
   const worstCase = Math.min(...rollOutcomes);
   const averageCase = rollOutcomes.reduce((total, score) => total + score, 0) / rollOutcomes.length;
 
   return worstCase * HARD_WORST_CASE_WEIGHT + averageCase * HARD_AVERAGE_CASE_WEIGHT;
+}
+
+function evaluatePlayerTurn(params: {
+  botBoard: Board;
+  playerBoard: Board;
+  playerRoll: DieValue;
+}): number {
+  const { botBoard, playerBoard, playerRoll } = params;
+  const playerColumns = getAvailableColumns(playerBoard);
+
+  if (playerColumns.length === 0) {
+    return evaluateExpectedBotReply({ botBoard, playerBoard });
+  }
+
+  let worstBotOutcome = Number.POSITIVE_INFINITY;
+
+  for (const columnIndex of playerColumns) {
+    const { nextCurrentBoard, nextOpponentBoard } = applyMove({
+      currentBoard: playerBoard,
+      opponentBoard: botBoard,
+      columnIndex,
+      dieValue: playerRoll,
+    });
+
+    const botOutcome = evaluateExpectedBotReply({
+      botBoard: nextOpponentBoard,
+      playerBoard: nextCurrentBoard,
+    });
+
+    worstBotOutcome = Math.min(worstBotOutcome, botOutcome);
+  }
+
+  return worstBotOutcome;
+}
+
+function evaluateExpectedBotReply(params: {
+  botBoard: Board;
+  playerBoard: Board;
+}): number {
+  const { botBoard, playerBoard } = params;
+  const botColumns = getAvailableColumns(botBoard);
+
+  if (botColumns.length === 0) {
+    return evaluateBoardAdvantage({ botBoard, playerBoard });
+  }
+
+  const outcomes = POSSIBLE_BOT_ROLLS.map((botRoll) => {
+    let bestOutcomeForRoll = Number.NEGATIVE_INFINITY;
+
+    for (const columnIndex of botColumns) {
+      const { nextCurrentBoard, nextOpponentBoard } = applyMove({
+        currentBoard: botBoard,
+        opponentBoard: playerBoard,
+        columnIndex,
+        dieValue: botRoll,
+      });
+
+      bestOutcomeForRoll = Math.max(
+        bestOutcomeForRoll,
+        evaluateBoardAdvantage({
+          botBoard: nextCurrentBoard,
+          playerBoard: nextOpponentBoard,
+        }),
+      );
+    }
+
+    return bestOutcomeForRoll;
+  });
+
+  return outcomes.reduce((total, score) => total + score, 0) / outcomes.length;
+}
+
+function evaluateBoardAdvantage(params: {
+  botBoard: Board;
+  playerBoard: Board;
+}): number {
+  const { botBoard, playerBoard } = params;
+  const botSpace = getAvailableColumns(botBoard).length;
+  const playerSpace = getAvailableColumns(playerBoard).length;
+
+  return scoreBoard(botBoard) - scoreBoard(playerBoard) + (botSpace - playerSpace) * BOARD_SPACE_WEIGHT;
 }
 
 function pickBestImmediateColumn(evaluatedMoves: EvaluatedMove[], random: () => number): ColumnIndex {

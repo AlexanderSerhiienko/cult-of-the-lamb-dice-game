@@ -8,12 +8,17 @@ export function applySnapshotToGameStore(params: {
   const { snapshot, applyOnlineServerState } = params;
 
   applyOnlineServerState({
-    playerBoard: snapshot.playerBoard,
-    botBoard: snapshot.botBoard,
+    seat1Board: snapshot.seat1Board,
+    seat2Board: snapshot.seat2Board,
     currentRoll: snapshot.currentRoll,
     phase: snapshot.phase,
-    scores: snapshot.scores,
-    winner: snapshot.winner,
+    seatScores: snapshot.seatScores,
+    winner:
+      snapshot.winner === "seat1"
+        ? "player"
+        : snapshot.winner === "seat2"
+          ? "bot"
+          : snapshot.winner,
     revision: snapshot.revision,
     turnUserId: snapshot.turnUserId,
   });

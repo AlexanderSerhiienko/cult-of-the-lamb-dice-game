@@ -8,10 +8,11 @@ function percentile(values, ratio) {
 }
 
 export class LatencyMetrics {
-  constructor(name, flushEvery = 20) {
+  constructor(name, flushEvery = 20, telemetry = null) {
     this.name = name;
     this.flushEvery = flushEvery;
     this.values = [];
+    this.telemetry = telemetry;
   }
 
   push(valueMs, extra = {}) {
@@ -26,8 +27,19 @@ export class LatencyMetrics {
         p95,
         ...extra,
       });
+      if (this.telemetry) {
+        this.telemetry.trackMetric(this.name, p95, {
+          percentile: "p95",
+          count: this.values.length,
+          ...extra,
+        });
+        this.telemetry.trackMetric(this.name, p50, {
+          percentile: "p50",
+          count: this.values.length,
+          ...extra,
+        });
+      }
       this.values = [];
     }
   }
 }
-
