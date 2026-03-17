@@ -22,7 +22,6 @@ import {
   createRoomForUser,
   getRealtimeBootstrapSnapshot,
   joinRoomByCode,
-  RoomServiceError,
   saveRealtimeMatchState,
   startRoomMatch,
 } from "@/server/rooms/service";
