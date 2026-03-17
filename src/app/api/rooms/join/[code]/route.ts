@@ -12,7 +12,7 @@ export async function POST(_request: Request, { params }: Params) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const limiter = consumeRateLimit({
+  const limiter = await consumeRateLimit({
     key: `rooms:join:${user.id}`,
     limit: 30,
     windowMs: 60_000,

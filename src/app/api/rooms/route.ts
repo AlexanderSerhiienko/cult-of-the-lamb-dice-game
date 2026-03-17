@@ -8,7 +8,7 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const limiter = consumeRateLimit({
+  const limiter = await consumeRateLimit({
     key: `rooms:create:${user.id}`,
     limit: 10,
     windowMs: 60_000,

@@ -1,36 +1,26 @@
-type RateBucket = {
-  count: number;
-  resetAt: number;
+import { consumeInMemoryRateLimit } from "@/server/security/rate-limit-memory";
+import { consumeUpstashRateLimit, isUpstashRateLimitConfigured } from "@/server/security/rate-limit-upstash";
+
+export type RateLimitResult = {
+  ok: boolean;
+  retryAfterSec: number;
 };
 
-const rateBuckets = new Map<string, RateBucket>();
-
-export function consumeRateLimit(params: {
+export async function consumeRateLimit(params: {
   key: string;
   limit: number;
   windowMs: number;
-}): { ok: boolean; retryAfterSec: number } {
-  const now = Date.now();
-  const bucket = rateBuckets.get(params.key);
-
-  if (!bucket || bucket.resetAt <= now) {
-    rateBuckets.set(params.key, {
-      count: 1,
-      resetAt: now + params.windowMs,
-    });
-    return { ok: true, retryAfterSec: Math.ceil(params.windowMs / 1000) };
+}): Promise<RateLimitResult> {
+  if (isUpstashRateLimitConfigured()) {
+    try {
+      return await consumeUpstashRateLimit(params);
+    } catch (error) {
+      console.error("[rate-limit:upstash_fallback_to_memory]", {
+        key: params.key,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
   }
 
-  if (bucket.count >= params.limit) {
-    return {
-      ok: false,
-      retryAfterSec: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
-    };
-  }
-
-  bucket.count += 1;
-  return {
-    ok: true,
-    retryAfterSec: Math.max(1, Math.ceil((bucket.resetAt - now) / 1000)),
-  };
+  return consumeInMemoryRateLimit(params);
 }

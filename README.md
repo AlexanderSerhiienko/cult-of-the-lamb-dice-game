@@ -106,6 +106,11 @@ Realtime-only variables:
 - `WEB_API_URL` - base URL of the Next.js app, usually `http://localhost:3000`
 - `REALTIME_GRACE_PERIOD_MS` - reconnect grace period, for example `60000`
 
+Optional production variables:
+
+- `UPSTASH_REDIS_REST_URL` - shared Redis REST URL for distributed rate limiting
+- `UPSTASH_REDIS_REST_TOKEN` - shared Redis REST token for distributed rate limiting
+
 ### 3. Sync the database schema
 
 For local development:
@@ -230,6 +235,7 @@ Notes:
 - Do not set `PORT` manually on Render
 - The realtime service does not need `DATABASE_URL`
 - `SKIP_PRISMA_GENERATE=1` is required so the realtime service can install dependencies without Prisma setup
+- For production-grade API rate limiting, configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` on the web app
 
 ## Production Checklist
 

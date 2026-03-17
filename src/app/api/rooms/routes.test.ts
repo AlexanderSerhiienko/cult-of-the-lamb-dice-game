@@ -91,7 +91,7 @@ describe("rooms api routes", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.mocked(requireSessionUser).mockResolvedValue(mockUser as never);
-    vi.mocked(consumeRateLimit).mockReturnValue({
+    vi.mocked(consumeRateLimit).mockResolvedValue({
       ok: true,
       retryAfterSec: 60,
     });
@@ -108,7 +108,7 @@ describe("rooms api routes", () => {
   });
 
   it("returns 429 when create room rate limit is exceeded", async () => {
-    vi.mocked(consumeRateLimit).mockReturnValue({
+    vi.mocked(consumeRateLimit).mockResolvedValue({
       ok: false,
       retryAfterSec: 12,
     });
