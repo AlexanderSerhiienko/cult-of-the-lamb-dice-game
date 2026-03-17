@@ -17,27 +17,47 @@ type AppShellProps = {
   children: ReactNode;
 };
 
-export function AppShell({ children }: AppShellProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+function getOnlineRoomId(pathname: string): string | null {
+  const match = pathname.match(/^\/online\/room\/([^/]+)\/play$/);
+  return match?.[1] ?? null;
+}
+
+function getShellRouteContext(pathname: string) {
   const isHomeRoute = pathname === "/";
   const isGameRoute = pathname.startsWith("/game");
   const isOnlineRoute = pathname.startsWith("/online");
   const isOnlinePlayRoute = /^\/online\/room\/[^/]+\/play$/.test(pathname);
-  const onlineRoomId = isOnlinePlayRoute ? pathname.split("/")[3] ?? null : null;
+
+  return {
+    isHomeRoute,
+    isGameRoute,
+    isOnlineRoute,
+    isOnlinePlayRoute,
+    showBackLink: !isHomeRoute,
+    showGameActions: isGameRoute,
+    showOnlineActions: isOnlinePlayRoute,
+    onlineRoomId: isOnlinePlayRoute ? getOnlineRoomId(pathname) : null,
+    contextLabel: isOnlinePlayRoute ? "Online match" : isOnlineRoute ? "Online" : isGameRoute ? "Game" : null,
+  };
+}
+
+export function AppShell({ children }: AppShellProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const routeContext = getShellRouteContext(pathname);
   const startGame = useGameStore((state) => state.startGame);
   const resetGame = useGameStore((state) => state.resetGame);
   const status = useGameStore((state) => state.status);
   const [isLeavingOnlineMatch, setIsLeavingOnlineMatch] = useState(false);
 
   async function handleLeaveOnlineMatch() {
-    if (!onlineRoomId || isLeavingOnlineMatch) {
+    if (!routeContext.onlineRoomId || isLeavingOnlineMatch) {
       return;
     }
 
     setIsLeavingOnlineMatch(true);
     try {
-      await leaveRoom(onlineRoomId);
+      await leaveRoom(routeContext.onlineRoomId);
       router.push("/");
     } finally {
       setIsLeavingOnlineMatch(false);
@@ -50,15 +70,6 @@ export function AppShell({ children }: AppShellProps) {
     onLeave: resetGame,
   });
 
-  const showBackLink = !isHomeRoute;
-  const contextLabel = isOnlinePlayRoute
-    ? "Online match"
-    : isOnlineRoute
-      ? "Online"
-      : isGameRoute
-        ? "Game"
-        : null;
-
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <header className="border-b border-slate-800/80 bg-slate-950/70 backdrop-blur">
@@ -67,12 +78,12 @@ export function AppShell({ children }: AppShellProps) {
             <Link href="/" className="shrink-0 text-lg font-semibold tracking-[0.08em] text-slate-100">
               Knucklebones
             </Link>
-            {contextLabel ? (
+            {routeContext.contextLabel ? (
               <span className="hidden text-xs font-medium uppercase tracking-[0.22em] text-slate-500 sm:inline">
-                {contextLabel}
+                {routeContext.contextLabel}
               </span>
             ) : null}
-            {showBackLink ? (
+            {routeContext.showBackLink ? (
               <Link
                 href="/"
                 className="ml-auto rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300 transition hover:border-slate-700 hover:bg-slate-900 sm:ml-0"
@@ -83,16 +94,16 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           <div className="flex flex-1 flex-col gap-3 lg:min-w-0 lg:flex-row lg:items-center lg:justify-end">
-            {(isGameRoute || isOnlinePlayRoute) ? (
+            {(routeContext.showGameActions || routeContext.showOnlineActions) ? (
               <div className="flex min-w-0 items-center justify-start rounded-2xl border border-slate-800/80 bg-slate-900/70 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] lg:justify-center">
-                {isGameRoute ? (
+                {routeContext.showGameActions ? (
                   <GameHeaderActions
                     onStartGame={startGame}
                     onResetGame={resetGame}
                     isResetDisabled={status === GAME_STATUS.IDLE}
                   />
                 ) : null}
-                {isOnlinePlayRoute ? (
+                {routeContext.showOnlineActions ? (
                   <OnlineHeaderActions
                     onLeaveMatch={handleLeaveOnlineMatch}
                     isLeaving={isLeavingOnlineMatch}

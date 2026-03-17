@@ -5,6 +5,11 @@ import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchRoom, leaveRoom, startMatch, type RoomApiSnapshot } from "@/features/online/api";
 
+function formatLobbyMemberLabel(member: RoomApiSnapshot["members"][number]) {
+  const memberName = member.name ?? member.email ?? member.userId;
+  return member.role === "HOST" ? `${memberName} (host)` : memberName;
+}
+
 export default function OnlineRoomLobbyPage() {
   const router = useRouter();
   const params = useParams<{ roomId: string }>();
@@ -55,6 +60,11 @@ export default function OnlineRoomLobbyPage() {
   const isHost = userId !== null && room?.room.hostId === userId;
   const isMatchStarting = Boolean(room?.currentMatchId);
   const canStart = Boolean(isHost && activeMembers.length === 2 && !isStarting && !isLeaving && !isMatchStarting);
+  const copyButtonLabel = copyState === "copied" ? "Copied" : "Copy code";
+  const startButtonLabel = isStarting || isMatchStarting ? "Starting..." : "Start match";
+  const leaveDisabled = isLeaving || isStarting || isMatchStarting;
+  const showCopyError = copyState === "failed";
+  const showMatchStartingNotice = isMatchStarting;
 
   useEffect(() => {
     if (!room?.currentMatchId || hasNavigatedToMatchRef.current) {
@@ -137,21 +147,21 @@ export default function OnlineRoomLobbyPage() {
           onClick={handleCopyCode}
           className="rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:bg-slate-900"
         >
-          {copyState === "copied" ? "Copied" : "Copy code"}
+          {copyButtonLabel}
         </button>
       </div>
       <p className="mt-2 text-sm text-slate-400">Share this code to invite another player.</p>
-      {copyState === "failed" ? (
+      {showCopyError ? (
         <p className="mt-2 text-sm text-rose-300">Could not copy room code. Please copy it manually.</p>
       ) : null}
-      {isMatchStarting ? (
+      {showMatchStartingNotice ? (
         <p className="mt-3 text-sm font-medium text-cyan-300">Match is starting. Connecting both players...</p>
       ) : null}
 
       <ul className="mt-5 space-y-2 text-sm text-slate-200">
         {activeMembers.map((member) => (
           <li key={member.userId} className="rounded-md border border-slate-800 px-3 py-2">
-            {(member.name ?? member.email ?? member.userId) + (member.role === "HOST" ? " (host)" : "")}
+            {formatLobbyMemberLabel(member)}
           </li>
         ))}
       </ul>
@@ -163,12 +173,12 @@ export default function OnlineRoomLobbyPage() {
           disabled={!canStart}
           className="rounded-md border border-emerald-500/60 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-emerald-100 transition active:scale-[0.98] active:bg-emerald-500/35 disabled:opacity-60"
         >
-          {isStarting || isMatchStarting ? "Starting..." : "Start match"}
+          {startButtonLabel}
         </button>
         <button
           type="button"
           onClick={handleLeave}
-          disabled={isLeaving || isStarting || isMatchStarting}
+          disabled={leaveDisabled}
           className="rounded-md border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition active:scale-[0.98] active:bg-slate-900 disabled:opacity-60"
         >
           {isLeaving ? "Leaving..." : "Leave room"}

@@ -18,6 +18,62 @@ type OnlineGameContentProps = {
   interactionBlocked?: boolean;
 };
 
+function getSeatPerspective(params: {
+  mySeat: 1 | 2;
+  seat1Board: ReturnType<typeof useGameStore.getState>["seat1Board"];
+  seat2Board: ReturnType<typeof useGameStore.getState>["seat2Board"];
+  seatScores: ReturnType<typeof useGameStore.getState>["seatScores"];
+}) {
+  const { mySeat, seat1Board, seat2Board, seatScores } = params;
+
+  if (mySeat === 1) {
+    return {
+      myBoard: seat1Board,
+      opponentBoard: seat2Board,
+      myScore: seatScores.seat1,
+      opponentScore: seatScores.seat2,
+      winningToken: "player" as const,
+    };
+  }
+
+  return {
+    myBoard: seat2Board,
+    opponentBoard: seat1Board,
+    myScore: seatScores.seat2,
+    opponentScore: seatScores.seat1,
+    winningToken: "bot" as const,
+  };
+}
+
+function getSelectableOnlineColumns(params: {
+  isMyTurn: boolean;
+  interactionLocked: boolean;
+  interactionBlocked: boolean;
+  currentRoll: number | null;
+  myBoard: ReturnType<typeof useGameStore.getState>["seat1Board"];
+}) {
+  const { isMyTurn, interactionLocked, interactionBlocked, currentRoll, myBoard } = params;
+
+  if (!isMyTurn || interactionLocked || interactionBlocked || currentRoll === null) {
+    return [];
+  }
+
+  return getAvailableColumns(myBoard);
+}
+
+function getOnlineResultText(params: {
+  winner: ReturnType<typeof useGameStore.getState>["winner"];
+  winningToken: "player" | "bot";
+}) {
+  const { winner, winningToken } = params;
+
+  if (winner === "draw") {
+    return "Draw";
+  }
+
+  return winner === winningToken ? "Victory" : "Defeat";
+}
+
 export function OnlineGameContent({
   mySeat,
   userId,
@@ -37,12 +93,21 @@ export function OnlineGameContent({
   const onlineRoomId = useGameStore((state) => state.onlineRoomId);
 
   const isMyTurn = turnUserId === userId && phase === GAME_PHASE.PLAYER_TURN;
-  const myBoard = mySeat === 1 ? seat1Board : seat2Board;
-  const opponentBoard = mySeat === 1 ? seat2Board : seat1Board;
-  const myScore = mySeat === 1 ? seatScores.seat1 : seatScores.seat2;
-  const opponentScore = mySeat === 1 ? seatScores.seat2 : seatScores.seat1;
-  const availableColumns =
-    isMyTurn && !interactionLocked && !interactionBlocked && currentRoll !== null ? getAvailableColumns(myBoard) : [];
+  const { myBoard, opponentBoard, myScore, opponentScore, winningToken } = getSeatPerspective({
+    mySeat,
+    seat1Board,
+    seat2Board,
+    seatScores,
+  });
+  const availableColumns = getSelectableOnlineColumns({
+    isMyTurn,
+    interactionLocked,
+    interactionBlocked,
+    currentRoll,
+    myBoard,
+  });
+  const showMyDie = isMyTurn;
+  const showOpponentDie = !isMyTurn && phase === GAME_PHASE.PLAYER_TURN;
 
   async function handleBackToMenu() {
     if (onlineRoomId) {
@@ -60,7 +125,7 @@ export function OnlineGameContent({
           scoreValue={myScore}
           scoreTone={PLAYER.PLAYER}
           dieLabel="Your die"
-          dieValue={isMyTurn ? currentRoll : null}
+          dieValue={showMyDie ? currentRoll : null}
           isActiveTurn={isMyTurn}
         />
 
@@ -81,21 +146,15 @@ export function OnlineGameContent({
           scoreValue={opponentScore}
           scoreTone={PLAYER.BOT}
           dieLabel="Opponent die"
-          dieValue={!isMyTurn && phase === GAME_PHASE.PLAYER_TURN ? currentRoll : null}
-          isActiveTurn={!isMyTurn && phase === GAME_PHASE.PLAYER_TURN}
+          dieValue={showOpponentDie ? currentRoll : null}
+          isActiveTurn={showOpponentDie}
         />
       </div>
 
       {phase === GAME_PHASE.FINISHED && winner ? (
         <GameResultModal
           isOpen
-          resultText={
-            winner === "draw"
-              ? "Draw"
-              : winner === (mySeat === 1 ? "player" : "bot")
-                ? "Victory"
-                : "Defeat"
-          }
+          resultText={getOnlineResultText({ winner, winningToken })}
           playerScore={myScore}
           botScore={opponentScore}
           onRematch={handleBackToMenu}

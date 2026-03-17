@@ -15,16 +15,18 @@ export type OnlineUiStatus =
   | "sync_error"
   | "service_unavailable";
 
+const BLOCKED_STATUSES = new Set<OnlineUiStatus>([
+  "loading",
+  "connecting",
+  "reconnecting",
+  "move_pending",
+  "sync_error",
+  "service_unavailable",
+  "opponent_left",
+]);
+
 export function isOnlineInteractionBlocked(status: OnlineUiStatus): boolean {
-  return (
-    status === "loading" ||
-    status === "connecting" ||
-    status === "reconnecting" ||
-    status === "move_pending" ||
-    status === "sync_error" ||
-    status === "service_unavailable" ||
-    status === "opponent_left"
-  );
+  return BLOCKED_STATUSES.has(status);
 }
 
 export function getReconnectCtaLabel(params: {
@@ -37,10 +39,8 @@ export function getReconnectCtaLabel(params: {
     return "Return to active match";
   }
 
-  const reconnectSecondsLeft = Math.max(0, Math.ceil((reconnectDeadlineMs - nowMs) / 1000));
-  return reconnectSecondsLeft > 0
-    ? `Reconnect to active match (${reconnectSecondsLeft}s)`
-    : "Return to active match";
+  const secondsLeft = Math.max(0, Math.ceil((reconnectDeadlineMs - nowMs) / 1000));
+  return secondsLeft > 0 ? `Reconnect to active match (${secondsLeft}s)` : "Return to active match";
 }
 
 export function describeMoveRejectionReason(reason: string): string {
@@ -70,6 +70,10 @@ export function deriveOnlineUiStatus(params: {
   error: string | null;
 }): OnlineUiStatus {
   const { transportState, mySeat, movePending, opponentConnectionState, error } = params;
+  const isTransportUnavailable = transportState === "reconnecting" || transportState === "disconnected";
+  const isSeatUnknown = !mySeat;
+  const hasRecoverableError = Boolean(error) && isTransportUnavailable;
+  const hasFatalSyncError = Boolean(error) && !isTransportUnavailable;
 
   if (opponentConnectionState === "left_match") {
     return "opponent_left";
@@ -83,18 +87,19 @@ export function deriveOnlineUiStatus(params: {
     return "connecting";
   }
 
-  if (!mySeat) {
-    if (transportState === "reconnecting" || transportState === "disconnected") {
-      return error ? "service_unavailable" : "reconnecting";
+  if (isSeatUnknown) {
+    if (isTransportUnavailable) {
+      return hasRecoverableError ? "service_unavailable" : "reconnecting";
     }
 
     return "loading";
   }
 
-  if (error) {
-    if (transportState === "reconnecting" || transportState === "disconnected") {
-      return "service_unavailable";
-    }
+  if (hasRecoverableError) {
+    return "service_unavailable";
+  }
+
+  if (hasFatalSyncError) {
     return "sync_error";
   }
 
@@ -106,7 +111,7 @@ export function deriveOnlineUiStatus(params: {
     return "move_pending";
   }
 
-  if (transportState === "reconnecting" || transportState === "disconnected") {
+  if (isTransportUnavailable) {
     return "reconnecting";
   }
 

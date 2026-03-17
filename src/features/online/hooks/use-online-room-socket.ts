@@ -6,7 +6,6 @@ import { GAME_MODE } from "@/features/game/core/types";
 import {
   ONLINE_SOCKET_EVENT,
   type MatchFinishedEvent,
-  type PeerConnectionStateEvent,
   type SyncResponseEvent,
 } from "@/features/online/socket-events";
 import { useOnlineMoveSubmission } from "@/features/online/hooks/use-online-move-submission";
@@ -54,77 +53,92 @@ export function useOnlineRoomSocket({
       applyOnlineServerState,
       setError,
     });
-  const bindSocketEvents = useCallback(
-    (socket: Socket) => {
-      socketRef.current = socket;
 
+  const handleSocketConnect = useCallback(
+    (socket: Socket) => {
+      setError(null);
+      socket.emit(ONLINE_SOCKET_EVENT.SYNC_REQUEST, {
+        roomId,
+        matchId,
+        lastSeenRevision: useGameStore.getState().onlineRevision,
+      });
+    },
+    [matchId, roomId],
+  );
+
+  const handleSyncResponse = useCallback(
+    (payload: SyncResponseEvent) => {
+      if (!payload?.snapshot) {
+        return;
+      }
+
+      const snapshot = payload.snapshot as OnlineSnapshot;
+      const seat = getOnlineSeat(snapshot, userId);
+      setOnlineSession({ roomId, seat });
+      commitSnapshot(snapshot);
+      resetOpponentConnectionState();
+    },
+    [commitSnapshot, resetOpponentConnectionState, roomId, setOnlineSession, userId],
+  );
+
+  const handleMatchFinished = useCallback(
+    (payload: MatchFinishedEvent) => {
+      const snapshot = payload?.snapshot as OnlineSnapshot | undefined;
+      if (!snapshot) {
+        return;
+      }
+
+      commitSnapshot(snapshot);
+      resetOpponentConnectionState();
+    },
+    [commitSnapshot, resetOpponentConnectionState],
+  );
+
+  const registerSocketListeners = useCallback(
+    (socket: Socket) => {
       const onConnect = () => {
-        setError(null);
-        socket.emit(ONLINE_SOCKET_EVENT.SYNC_REQUEST, {
-          roomId,
-          matchId,
-          lastSeenRevision: useGameStore.getState().onlineRevision,
-        });
+        handleSocketConnect(socket);
       };
 
       const onDisconnect = () => {
         // handled by transport state
       };
 
-      const onSyncResponse = (payload: SyncResponseEvent) => {
-        if (!payload?.snapshot) {
-          return;
-        }
-        const snapshot = payload.snapshot as OnlineSnapshot;
-        const seat = getOnlineSeat(snapshot, userId);
-        setOnlineSession({ roomId, seat });
-        commitSnapshot(snapshot);
-        resetOpponentConnectionState();
-      };
-
-      const onMatchFinished = (payload: MatchFinishedEvent) => {
-        const snapshot = payload?.snapshot as OnlineSnapshot | undefined;
-        if (!snapshot) {
-          return;
-        }
-
-        commitSnapshot(snapshot);
-        resetOpponentConnectionState();
-      };
-
-      const onPeerConnectionState = (payload: PeerConnectionStateEvent) => {
-        handlePeerConnectionState(payload);
-      };
-
       socket.on("connect", onConnect);
       socket.on("disconnect", onDisconnect);
-      socket.on(ONLINE_SOCKET_EVENT.SYNC_RESPONSE, onSyncResponse);
+      socket.on(ONLINE_SOCKET_EVENT.SYNC_RESPONSE, handleSyncResponse);
       socket.on(ONLINE_SOCKET_EVENT.MOVE_APPLIED, handleMoveApplied);
       socket.on(ONLINE_SOCKET_EVENT.MOVE_REJECTED, handleMoveRejected);
-      socket.on(ONLINE_SOCKET_EVENT.MATCH_FINISHED, onMatchFinished);
-      socket.on(ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE, onPeerConnectionState);
+      socket.on(ONLINE_SOCKET_EVENT.MATCH_FINISHED, handleMatchFinished);
+      socket.on(ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE, handlePeerConnectionState);
 
       return () => {
         socket.off("connect", onConnect);
         socket.off("disconnect", onDisconnect);
-        socket.off(ONLINE_SOCKET_EVENT.SYNC_RESPONSE, onSyncResponse);
+        socket.off(ONLINE_SOCKET_EVENT.SYNC_RESPONSE, handleSyncResponse);
         socket.off(ONLINE_SOCKET_EVENT.MOVE_APPLIED, handleMoveApplied);
         socket.off(ONLINE_SOCKET_EVENT.MOVE_REJECTED, handleMoveRejected);
-        socket.off(ONLINE_SOCKET_EVENT.MATCH_FINISHED, onMatchFinished);
-        socket.off(ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE, onPeerConnectionState);
+        socket.off(ONLINE_SOCKET_EVENT.MATCH_FINISHED, handleMatchFinished);
+        socket.off(ONLINE_SOCKET_EVENT.PEER_CONNECTION_STATE, handlePeerConnectionState);
       };
     },
     [
-      commitSnapshot,
+      handleMatchFinished,
       handleMoveApplied,
       handleMoveRejected,
       handlePeerConnectionState,
-      matchId,
-      resetOpponentConnectionState,
-      roomId,
-      setOnlineSession,
-      userId,
+      handleSocketConnect,
+      handleSyncResponse,
     ],
+  );
+
+  const bindSocketEvents = useCallback(
+    (socket: Socket) => {
+      socketRef.current = socket;
+
+      return registerSocketListeners(socket);
+    },
+    [registerSocketListeners],
   );
 
   const { transportError, transportState } = useRealtimeTransport({

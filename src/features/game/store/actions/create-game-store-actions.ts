@@ -9,7 +9,7 @@ import {
   scoreBoard,
 } from "@/features/game/core/rules";
 import { GAME_MODE, GAME_PHASE, GAME_RESULT, GAME_STATUS, PLAYER } from "@/features/game/core/types";
-import type { GameWinner } from "@/features/game/core/types";
+import type { ColumnIndex, DieValue, GameWinner } from "@/features/game/core/types";
 import { GAME_SFX_EVENT, playGameSfx } from "@/features/game/sound/game-sfx";
 import type { GameStoreDependencies } from "@/features/game/store/game-store-deps";
 import { createInitialGameStoreState } from "@/features/game/store/state/create-initial-game-store-state";
@@ -19,6 +19,9 @@ import type { GameStore, GameStoreActions } from "@/features/game/store/types/ga
 
 type SetState = StoreApi<GameStore>["setState"];
 type GetState = StoreApi<GameStore>["getState"];
+
+type SeatBoards = Pick<GameStore, "seat1Board" | "seat2Board">;
+type TurnState = Pick<GameStore, "currentRoll" | "turn" | "phase" | "interactionLocked" | "status">;
 
 function createSeatBoardState(params: {
   seat1Board: GameStore["seat1Board"];
@@ -36,6 +39,141 @@ function createSeatScoreState(seatScores: GameStore["seatScores"]) {
   };
 }
 
+function buildSeatScoresFromBoards(params: SeatBoards): GameStore["seatScores"] {
+  return {
+    seat1: scoreBoard(params.seat1Board),
+    seat2: scoreBoard(params.seat2Board),
+  };
+}
+
+function createStartedMatchState(params: {
+  deps: GameStoreDependencies;
+  seat1Board: GameStore["seat1Board"];
+  seat2Board: GameStore["seat2Board"];
+}) {
+  return {
+    ...createSeatBoardState({
+      seat1Board: params.seat1Board,
+      seat2Board: params.seat2Board,
+    }),
+    currentRoll: params.deps.diceSource.getNextRoll(),
+    turn: PLAYER.PLAYER,
+    phase: GAME_PHASE.PLAYER_TURN,
+    interactionLocked: false,
+    ...createSeatScoreState({ seat1: 0, seat2: 0 }),
+    status: GAME_STATUS.IN_PROGRESS,
+    winner: null,
+    matchId: params.deps.createMatchId(),
+    reportStatus: "idle" as const,
+    reportedAt: null,
+    reportError: null,
+  };
+}
+
+function buildSeatBoardsAfterHumanMove(params: {
+  isSeat1Turn: boolean;
+  activeBoard: GameStore["seat1Board"];
+  passiveBoard: GameStore["seat1Board"];
+  columnIndex: ColumnIndex;
+  dieValue: DieValue;
+}): SeatBoards {
+  const { nextCurrentBoard, nextOpponentBoard } = applyMove({
+    currentBoard: params.activeBoard,
+    opponentBoard: params.passiveBoard,
+    columnIndex: params.columnIndex,
+    dieValue: params.dieValue,
+  });
+
+  if (params.isSeat1Turn) {
+    return {
+      seat1Board: nextCurrentBoard,
+      seat2Board: nextOpponentBoard,
+    };
+  }
+
+  return {
+    seat1Board: nextOpponentBoard,
+    seat2Board: nextCurrentBoard,
+  };
+}
+
+function getRemovedDiceCount(params: {
+  isSeat1Turn: boolean;
+  previousBoards: SeatBoards;
+  nextBoards: SeatBoards;
+  columnIndex: ColumnIndex;
+}) {
+  const { isSeat1Turn, previousBoards, nextBoards, columnIndex } = params;
+
+  if (isSeat1Turn) {
+    return previousBoards.seat2Board[columnIndex].length - nextBoards.seat2Board[columnIndex].length;
+  }
+
+  return previousBoards.seat1Board[columnIndex].length - nextBoards.seat1Board[columnIndex].length;
+}
+
+function resolveNextTurnState(params: {
+  finished: boolean;
+  isPvb: boolean;
+  isSeat1Turn: boolean;
+  currentTurn: GameStore["turn"];
+  deps: GameStoreDependencies;
+}): TurnState {
+  const { finished, isPvb, isSeat1Turn, currentTurn, deps } = params;
+
+  if (finished) {
+    return {
+      currentRoll: null,
+      turn: currentTurn,
+      phase: GAME_PHASE.FINISHED,
+      interactionLocked: true,
+      status: GAME_STATUS.FINISHED,
+    };
+  }
+
+  return {
+    currentRoll: isPvb ? null : deps.diceSource.getNextRoll(),
+    turn: isSeat1Turn ? PLAYER.BOT : PLAYER.PLAYER,
+    phase: isSeat1Turn ? GAME_PHASE.BOT_TURN : GAME_PHASE.PLAYER_TURN,
+    interactionLocked: false,
+    status: GAME_STATUS.IN_PROGRESS,
+  };
+}
+
+function resolveFinishedWinner(result: ReturnType<typeof determineResult>): GameWinner {
+  if (result === GAME_RESULT.DRAW) {
+    return GAME_RESULT.DRAW;
+  }
+
+  return result === GAME_RESULT.WIN ? PLAYER.PLAYER : PLAYER.BOT;
+}
+
+function resolveFinishSfxEvent(winner: GameWinner) {
+  if (winner === PLAYER.PLAYER) {
+    return GAME_SFX_EVENT.VICTORY;
+  }
+
+  if (winner === PLAYER.BOT) {
+    return GAME_SFX_EVENT.DEFEAT;
+  }
+
+  return GAME_SFX_EVENT.DRAW;
+}
+
+function resolveReportStatusForOnlineSync(params: {
+  phase: GameStore["phase"];
+  gameMode: GameStore["gameMode"];
+  currentReportStatus: GameStore["reportStatus"];
+}) {
+  const { phase, gameMode, currentReportStatus } = params;
+
+  if (phase === GAME_PHASE.FINISHED && gameMode === GAME_MODE.ONLINE_PRIVATE) {
+    return "pending" as const;
+  }
+
+  return currentReportStatus;
+}
+
 export function createGameStoreActions(params: {
   set: SetState;
   get: GetState;
@@ -46,23 +184,13 @@ export function createGameStoreActions(params: {
   return {
     startGame: () => {
       const boards = createInitialBoards();
-      set({
-        ...createSeatBoardState({
+      set(
+        createStartedMatchState({
+          deps,
           seat1Board: boards.player,
           seat2Board: boards.bot,
         }),
-        currentRoll: deps.diceSource.getNextRoll(),
-        turn: PLAYER.PLAYER,
-        phase: GAME_PHASE.PLAYER_TURN,
-        interactionLocked: false,
-        ...createSeatScoreState({ seat1: 0, seat2: 0 }),
-        status: GAME_STATUS.IN_PROGRESS,
-        winner: null,
-        matchId: deps.createMatchId(),
-        reportStatus: "idle",
-        reportedAt: null,
-        reportError: null,
-      });
+      );
     },
     setGameMode: (mode) => {
       set({ gameMode: mode });
@@ -99,22 +227,23 @@ export function createGameStoreActions(params: {
 
       set({ interactionLocked: true });
 
-      const { nextCurrentBoard, nextOpponentBoard } = applyMove({
-        currentBoard: activeBoard,
-        opponentBoard: passiveBoard,
+      const nextBoards = buildSeatBoardsAfterHumanMove({
+        isSeat1Turn: isPlayerTurn,
+        activeBoard,
+        passiveBoard,
         columnIndex,
         dieValue: state.currentRoll,
       });
-
-      const nextSeat1Board = isPlayerTurn ? nextCurrentBoard : nextOpponentBoard;
-      const nextSeat2Board = isPlayerTurn ? nextOpponentBoard : nextCurrentBoard;
-      const seatScores = {
-        seat1: scoreBoard(nextSeat1Board),
-        seat2: scoreBoard(nextSeat2Board),
-      };
-      const removedDiceCount = isPlayerTurn
-        ? state.seat2Board[columnIndex].length - nextSeat2Board[columnIndex].length
-        : state.seat1Board[columnIndex].length - nextSeat1Board[columnIndex].length;
+      const seatScores = buildSeatScoresFromBoards(nextBoards);
+      const removedDiceCount = getRemovedDiceCount({
+        isSeat1Turn: isPlayerTurn,
+        previousBoards: {
+          seat1Board: state.seat1Board,
+          seat2Board: state.seat2Board,
+        },
+        nextBoards,
+        columnIndex,
+      });
 
       playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
       if (removedDiceCount > 0) {
@@ -122,35 +251,23 @@ export function createGameStoreActions(params: {
       }
 
       const status = getGameStatus({
-        player: nextSeat1Board,
-        bot: nextSeat2Board,
+        player: nextBoards.seat1Board,
+        bot: nextBoards.seat2Board,
       });
-
       const finished = status === GAME_STATUS.FINISHED;
       const isPvb = state.gameMode === GAME_MODE.PVB;
-      const nextTurn = finished
-        ? state.turn
-        : isPlayerTurn
-          ? PLAYER.BOT
-          : PLAYER.PLAYER;
-      const nextPhase = finished
-        ? GAME_PHASE.FINISHED
-        : isPlayerTurn
-          ? GAME_PHASE.BOT_TURN
-          : GAME_PHASE.PLAYER_TURN;
-      const nextRoll = finished ? null : isPvb ? null : deps.diceSource.getNextRoll();
+      const nextTurnState = resolveNextTurnState({
+        finished,
+        isPvb,
+        isSeat1Turn: isPlayerTurn,
+        currentTurn: state.turn,
+        deps,
+      });
 
       set({
-        ...createSeatBoardState({
-          seat1Board: nextSeat1Board,
-          seat2Board: nextSeat2Board,
-        }),
-        currentRoll: nextRoll,
-        turn: nextTurn,
-        phase: nextPhase,
-        interactionLocked: finished,
+        ...createSeatBoardState(nextBoards),
         ...createSeatScoreState(seatScores),
-        status,
+        ...nextTurnState,
       });
 
       if (finished) {
@@ -185,10 +302,11 @@ export function createGameStoreActions(params: {
         dieValue: roll,
       });
 
-      const seatScores = {
-        seat1: scoreBoard(nextOpponentBoard),
-        seat2: scoreBoard(nextCurrentBoard),
+      const nextBoards = {
+        seat1Board: nextOpponentBoard,
+        seat2Board: nextCurrentBoard,
       };
+      const seatScores = buildSeatScoresFromBoards(nextBoards);
       const removedDiceCount = state.seat1Board[botColumn].length - nextOpponentBoard[botColumn].length;
 
       playGameSfx(GAME_SFX_EVENT.PLACE, state.soundEnabled);
@@ -202,18 +320,18 @@ export function createGameStoreActions(params: {
       });
 
       const finished = status === GAME_STATUS.FINISHED;
+      const nextTurnState = resolveNextTurnState({
+        finished,
+        isPvb: false,
+        isSeat1Turn: false,
+        currentTurn: state.turn,
+        deps,
+      });
 
       set({
-        ...createSeatBoardState({
-          seat1Board: nextOpponentBoard,
-          seat2Board: nextCurrentBoard,
-        }),
-        currentRoll: finished ? null : deps.diceSource.getNextRoll(),
-        turn: finished ? state.turn : PLAYER.PLAYER,
-        phase: finished ? GAME_PHASE.FINISHED : GAME_PHASE.PLAYER_TURN,
-        interactionLocked: finished,
+        ...createSeatBoardState(nextBoards),
         ...createSeatScoreState(seatScores),
-        status,
+        ...nextTurnState,
       });
 
       if (finished) {
@@ -231,25 +349,13 @@ export function createGameStoreActions(params: {
     },
     finishGame: () => {
       const state = get();
-      const finalSeatScores = {
-        seat1: scoreBoard(state.seat1Board),
-        seat2: scoreBoard(state.seat2Board),
-      };
+      const finalSeatScores = buildSeatScoresFromBoards({
+        seat1Board: state.seat1Board,
+        seat2Board: state.seat2Board,
+      });
       const result = determineResult(state.seat1Board, state.seat2Board);
-      const winner: GameWinner =
-        result === GAME_RESULT.DRAW
-          ? GAME_RESULT.DRAW
-          : result === GAME_RESULT.WIN
-            ? PLAYER.PLAYER
-            : PLAYER.BOT;
-
-      if (winner === PLAYER.PLAYER) {
-        playGameSfx(GAME_SFX_EVENT.VICTORY, state.soundEnabled);
-      } else if (winner === PLAYER.BOT) {
-        playGameSfx(GAME_SFX_EVENT.DEFEAT, state.soundEnabled);
-      } else {
-        playGameSfx(GAME_SFX_EVENT.DRAW, state.soundEnabled);
-      }
+      const winner = resolveFinishedWinner(result);
+      playGameSfx(resolveFinishSfxEvent(winner), state.soundEnabled);
 
       set({
         phase: GAME_PHASE.FINISHED,
@@ -265,23 +371,13 @@ export function createGameStoreActions(params: {
     },
     rematch: () => {
       const boards = createInitialBoards();
-      set({
-        ...createSeatBoardState({
+      set(
+        createStartedMatchState({
+          deps,
           seat1Board: boards.player,
           seat2Board: boards.bot,
         }),
-        currentRoll: deps.diceSource.getNextRoll(),
-        turn: PLAYER.PLAYER,
-        phase: GAME_PHASE.PLAYER_TURN,
-        interactionLocked: false,
-        ...createSeatScoreState({ seat1: 0, seat2: 0 }),
-        status: GAME_STATUS.IN_PROGRESS,
-        winner: null,
-        matchId: deps.createMatchId(),
-        reportStatus: "idle",
-        reportedAt: null,
-        reportError: null,
-      });
+      );
     },
     resetGame: () => {
       const state = get();
@@ -325,10 +421,11 @@ export function createGameStoreActions(params: {
         onlineRevision: params.revision,
         onlineTurnUserId: params.turnUserId,
         onlineLastSyncAt: Date.now(),
-        reportStatus:
-          params.phase === GAME_PHASE.FINISHED && state.gameMode === GAME_MODE.ONLINE_PRIVATE
-            ? "pending"
-            : state.reportStatus,
+        reportStatus: resolveReportStatusForOnlineSync({
+          phase: params.phase,
+          gameMode: state.gameMode,
+          currentReportStatus: state.reportStatus,
+        }),
       });
     },
     clearOnlineSession: () => {
