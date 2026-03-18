@@ -67,11 +67,12 @@ Implemented:
 - Reconnect and leave handling
 - Auth and leaderboard
 - Match persistence and statistics
+- Mobile adaptation
+- Public matchmaking
 
 Planned next:
 
-- Mobile adaptation
-- Public matchmaking
+...
 
 ## Local Development
 
