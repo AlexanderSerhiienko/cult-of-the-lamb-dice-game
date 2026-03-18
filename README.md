@@ -67,12 +67,17 @@ Implemented:
 - Reconnect and leave handling
 - Auth and leaderboard
 - Match persistence and statistics
-- Mobile adaptation
 - Public matchmaking
 
 Planned next:
 
-...
+Link based private rooms
+Improvements for matchmaking
+Getting audience from Reddit
+Polishing the repository
+Sentry connection
+Mobile redesign
+Web redesign
 
 ## Local Development
 
