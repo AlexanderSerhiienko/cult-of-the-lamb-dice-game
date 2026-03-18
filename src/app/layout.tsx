@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AppShell } from "@/components/layout/app-shell";
 import { AuthSessionProvider } from "@/components/providers/auth-session-provider";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({
         <AuthSessionProvider>
           <AppShell>{children}</AppShell>
         </AuthSessionProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
