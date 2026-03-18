@@ -1,7 +1,7 @@
 "use client";
 
+import { Suspense, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 import { PagePanel } from "@/components/layout/page-panel";
 import { ActionButton } from "@/components/ui/action-button";
 import type { RankedProfileApi } from "@/features/ranked/api";
@@ -15,7 +15,7 @@ function formatRankProgress(profile: RankedProfileApi) {
   return `${profile.mmr} / ${profile.nextRankMmr} MMR`;
 }
 
-export default function RankedPage() {
+function RankedPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -121,5 +121,24 @@ export default function RankedPage() {
         ) : null}
         {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
     </PagePanel>
+  );
+}
+
+export default function RankedPage() {
+  return (
+    <Suspense
+      fallback={
+        <PagePanel
+          maxWidthClassName="max-w-xl"
+          panelClassName="rounded-xl border border-slate-800 bg-slate-900/60 p-6 pt-14 sm:pt-16"
+          backHref="/"
+          backInsetClassName="left-4 top-4 sm:left-6 sm:top-6"
+        >
+          <p className="text-sm text-slate-300">Loading ranked queue...</p>
+        </PagePanel>
+      }
+    >
+      <RankedPageContent />
+    </Suspense>
   );
 }
