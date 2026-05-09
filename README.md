@@ -243,20 +243,6 @@ Notes:
 - `SKIP_PRISMA_GENERATE=1` is required so the realtime service can install dependencies without Prisma setup
 - For production-grade API rate limiting, configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` on the web app
 
-## Production Checklist
-
-After both deploys are live, verify:
-
-- create room
-- join room by code
-- start match
-- both players connect to realtime
-- moves apply and persist correctly
-- closing one tab shows the disconnect grace state to the other player
-- reopening the app shows the reconnect action
-- reconnecting before timeout restores the match
-- intentional leave gives the opponent an immediate win
-
 ## Scripts
 
 - `npm run dev` - start Next.js in development
